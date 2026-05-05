@@ -63,7 +63,7 @@ export const linearTheme: Theme = {
       '--text-primary': '#F4F4F5',
       '--text-secondary': '#A8A9AC',
       '--text-muted': '#6E7075',
-      '--text-on-accent': '#FFFFFF',
+      '--text-on-accent': '#0F0F10',
       '--accent': '#7B85E0',
       '--accent-hover': '#8A93E5',
       '--accent-pressed': '#6770D6',

@@ -213,6 +213,8 @@ export function WorkspaceCanvas() {
     >
       <div
         ref={containerRef}
+        role="region"
+        aria-label="Workspace canvas"
         className="relative h-full w-full overflow-hidden bg-canvas"
         onMouseDown={handleCanvasMouseDown}
         onWheel={handleWheel}

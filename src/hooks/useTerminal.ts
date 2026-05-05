@@ -78,6 +78,14 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
 
     // Mount fresh
     const current = optsRef.current;
+    // Screen-reader mode: enable when the user prefers reduced motion
+    // (a reasonable proxy for assistive-tech use) or when explicitly
+    // toggled via settings. xterm mirrors output to an aria-live region.
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const term = new Terminal({
       theme: current.theme ?? DEFAULT_THEME_FALLBACK,
       fontFamily:
@@ -90,9 +98,10 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
       cursorBlink: current.cursorBlink ?? true,
       allowProposedApi: true,
       scrollback: 5000,
-      smoothScrollDuration: 60,
+      smoothScrollDuration: prefersReducedMotion ? 0 : 60,
       macOptionIsMeta: true,
       drawBoldTextInBrightColors: false,
+      screenReaderMode: prefersReducedMotion,
     });
 
     const fit = new FitAddon();

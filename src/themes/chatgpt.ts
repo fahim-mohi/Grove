@@ -66,7 +66,7 @@ export const chatgptTheme: Theme = {
       '--text-primary': '#ECECF1',
       '--text-secondary': '#A8A8B3',
       '--text-muted': '#6E6E80',
-      '--text-on-accent': '#FFFFFF',
+      '--text-on-accent': '#0D0D0D',
       '--accent': '#19C37D',
       '--accent-hover': '#1DD888',
       '--accent-pressed': '#10A36A',

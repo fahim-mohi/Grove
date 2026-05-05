@@ -66,7 +66,7 @@ export const claudeTheme: Theme = {
       '--text-primary': '#F5F4F0',
       '--text-secondary': '#A8A29E',
       '--text-muted': '#78716C',
-      '--text-on-accent': '#FFFFFF',
+      '--text-on-accent': '#1C1917',
       '--accent': '#F59E0B',
       '--accent-hover': '#FBBF24',
       '--accent-pressed': '#D97706',

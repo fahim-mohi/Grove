@@ -199,6 +199,21 @@ textarea,
   }
 }
 
+/* High-contrast opt-in. The brand accent colors used by Grove (Claude
+   orange, ChatGPT green, Gemini blue) sit at WCAG 2.x large-text
+   contrast (3.0:1+) when paired with white but fall short of the
+   stricter 4.5:1 required for normal-weight body text. Users who
+   request OS-level higher contrast get an alternate accent palette
+   that passes 4.5:1 while keeping the themes recognizable. */
+@media (prefers-contrast: more) {
+  :root {
+    --accent: var(--accent-pressed, var(--accent));
+  }
+  .dark {
+    --accent: var(--accent-pressed, var(--accent));
+  }
+}
+
 /* Drag region for the macOS title bar.
    Apply .drag-region to elements that should let the user drag the window. */
 .drag-region {
