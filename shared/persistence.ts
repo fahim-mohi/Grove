@@ -53,6 +53,9 @@ export interface PersistedState {
 
   // Tmux integration (Phase 16)
   preferTmux: boolean;
+
+  // First-run onboarding (Phase 17). Unix ms; null if never shown.
+  onboardingCompletedAt: number | null;
 }
 
 export function defaultPersistedState(): PersistedState {
@@ -77,6 +80,7 @@ export function defaultPersistedState(): PersistedState {
     confirmBeforeKill: false,
     customTheme: null,
     preferTmux: true,
+    onboardingCompletedAt: null,
   };
 }
 

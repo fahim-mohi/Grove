@@ -5,6 +5,7 @@ import { NewSessionDialog } from './components/NewSessionDialog';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { CommandPalette } from './components/CommandPalette';
+import { Onboarding } from './components/Onboarding';
 import { HandoffToast } from './components/HandoffToast';
 import { TmuxMissingBanner } from './components/TmuxMissingBanner';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -35,16 +36,29 @@ export function App() {
   const fitAllToBounds = useWorkspaceStore((s) => s.fitAllToBounds);
 
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const setTmuxAvailable = useWorkspaceStore((s) => s.setTmuxAvailable);
   const setExternalTmuxSessions = useWorkspaceStore((s) => s.setExternalTmuxSessions);
 
   useEffect(() => {
     setVersions(window.grove.system.versions());
     void window.grove.system.isClaudeInstalled().then(setClaudeInstalled);
+    // Show onboarding on first run only (no persisted completion stamp).
+    void (async () => {
+      const raw = (await window.grove.store.getAll()) as { onboardingCompletedAt?: number | null };
+      if (!raw?.onboardingCompletedAt) {
+        setShowOnboarding(true);
+      }
+    })();
     return setSaveErrorListener((message) => {
       setSaveError(message);
     });
   }, []);
+
+  function completeOnboarding(): void {
+    setShowOnboarding(false);
+    void window.grove.store.setMany({ onboardingCompletedAt: Date.now() });
+  }
 
   // Detect tmux + poll external sessions every 5s. The list excludes
   // tmux sessions that Grove panels are currently attached to (those
@@ -197,6 +211,7 @@ export function App() {
         <NewSessionDialog open={modal?.type === 'newSession'} onClose={closeModal} />
         <SettingsModal open={modal?.type === 'settings'} onClose={closeModal} />
         <CommandPalette open={modal?.type === 'commandPalette'} onClose={closeModal} />
+        <Onboarding open={showOnboarding} onComplete={completeOnboarding} />
         <HandoffToast />
 
         {saveError && (
