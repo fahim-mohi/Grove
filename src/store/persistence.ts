@@ -70,6 +70,9 @@ export async function hydrateStores(): Promise<PersistedState> {
     workspace; // (avoid lint about unused variable)
     useWorkspaceStore.setState({ sidebarCollapsed: persisted.sidebarCollapsed });
   }
+  if (persisted.canvasTransform) {
+    useWorkspaceStore.setState({ canvasTransform: persisted.canvasTransform });
+  }
   if (Array.isArray(persisted.tags)) {
     useWorkspaceStore.getState().hydrateTags(persisted.tags);
   }
@@ -107,6 +110,9 @@ export function subscribePersistence(): () => void {
     }
     if (state.sidebarCollapsed !== prev.sidebarCollapsed) {
       queueSave({ sidebarCollapsed: state.sidebarCollapsed });
+    }
+    if (state.canvasTransform !== prev.canvasTransform) {
+      queueSave({ canvasTransform: state.canvasTransform });
     }
   });
 

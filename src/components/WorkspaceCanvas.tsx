@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -10,10 +10,12 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useWorkspaceStore } from '../store/workspace';
+import { useSettingsStore } from '../store/settings';
 import { SessionPanel } from './SessionPanel';
 import { PanelChrome } from './PanelChrome';
 import { ResizeHandles } from './ResizeHandles';
 import { EmptyCanvas } from './EmptyCanvas';
+import { MiniMap } from './MiniMap';
 import type { Session } from '../store/types';
 
 const Z_PANEL_RESTING = 10;
@@ -23,9 +25,6 @@ const Z_PANEL_DRAGGING = 30;
 const MIN_PANEL_W = 400;
 const MIN_PANEL_H = 300;
 
-// The freeform canvas. Phase 3: panels live at absolute canvas-space
-// coordinates and can be drag-repositioned via @dnd-kit and resized via
-// 8 handles. Pan/zoom and minimap arrive in Phase 10.
 export function WorkspaceCanvas() {
   const sessionOrder = useWorkspaceStore((s) => s.sessionOrder);
   const sessionsMap = useWorkspaceStore((s) => s.sessions);
@@ -33,12 +32,21 @@ export function WorkspaceCanvas() {
   const focusedId = useWorkspaceStore((s) => s.focusedSessionId);
   const fullscreenId = useWorkspaceStore((s) => s.fullscreenSessionId);
   const filterTagId = useWorkspaceStore((s) => s.filterTagId);
+  const canvasTransform = useWorkspaceStore((s) => s.canvasTransform);
   const moveSession = useWorkspaceStore((s) => s.moveSession);
   const setDragging = useWorkspaceStore((s) => s.setDragging);
   const bringToFront = useWorkspaceStore((s) => s.bringToFront);
   const focusSession = useWorkspaceStore((s) => s.focusSession);
   const exitFullscreen = useWorkspaceStore((s) => s.exitFullscreen);
   const openModal = useWorkspaceStore((s) => s.openModal);
+  const panCanvas = useWorkspaceStore((s) => s.panCanvas);
+  const zoomCanvasAt = useWorkspaceStore((s) => s.zoomCanvasAt);
+  const snapToGrid = useSettingsStore((s) => s.snapToGrid);
+  const gridSize = useSettingsStore((s) => s.gridSize);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [spacePressed, setSpacePressed] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
 
   const sortedSessions = useMemo(
     () => sessionOrder.map((id) => sessionsMap[id]).filter((s): s is Session => Boolean(s)),
@@ -61,8 +69,25 @@ export function WorkspaceCanvas() {
     return () => window.removeEventListener('keydown', onKey);
   }, [fullscreenId, exitFullscreen]);
 
-  // Tighter activation distance — feels responsive without false-positives
-  // when the user clicks-not-drags on the header.
+  // Track Space key for pan affordance.
+  useEffect(() => {
+    function onDown(e: KeyboardEvent): void {
+      if (e.key === ' ' && !isInputElement(e.target)) {
+        e.preventDefault();
+        setSpacePressed(true);
+      }
+    }
+    function onUp(e: KeyboardEvent): void {
+      if (e.key === ' ') setSpacePressed(false);
+    }
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+    };
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 4 },
@@ -80,10 +105,17 @@ export function WorkspaceCanvas() {
     const id = e.active.id as string;
     const session = useWorkspaceStore.getState().sessions[id];
     if (session) {
-      moveSession(id, {
-        x: session.position.x + e.delta.x,
-        y: session.position.y + e.delta.y,
-      });
+      // dnd-kit reports delta in screen pixels. Canvas may be scaled,
+      // so divide by scale to get the canvas-space delta.
+      const canvasDx = e.delta.x / canvasTransform.scale;
+      const canvasDy = e.delta.y / canvasTransform.scale;
+      let nx = session.position.x + canvasDx;
+      let ny = session.position.y + canvasDy;
+      if (snapToGrid) {
+        nx = Math.round(nx / gridSize) * gridSize;
+        ny = Math.round(ny / gridSize) * gridSize;
+      }
+      moveSession(id, { x: nx, y: ny });
     }
     setDragging(null);
   }
@@ -92,16 +124,44 @@ export function WorkspaceCanvas() {
     setDragging(null);
   }
 
-  function handleCanvasClick(e: React.MouseEvent): void {
-    // Click on empty canvas → deselect
+  function handleCanvasMouseDown(e: React.MouseEvent): void {
+    // Empty-canvas click → deselect.
     if (e.target === e.currentTarget) {
       focusSession(null);
     }
+    // Pan: middle-mouse OR Space+left-drag.
+    const shouldPan = e.button === 1 || (e.button === 0 && spacePressed);
+    if (!shouldPan) return;
+    e.preventDefault();
+    setIsPanning(true);
+
+    let lastX = e.clientX;
+    let lastY = e.clientY;
+
+    function onMove(ev: globalThis.MouseEvent): void {
+      const dx = ev.clientX - lastX;
+      const dy = ev.clientY - lastY;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      panCanvas(dx, dy);
+    }
+    function onUp(): void {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setIsPanning(false);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 
-  // Fullscreen short-circuit: render only the focused panel filling the
-  // whole canvas. Other sessions stay mounted (xterm doesn't unmount) by
-  // keeping them in the DOM but display:none'd. Esc to exit.
+  function handleWheel(e: React.WheelEvent): void {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    zoomCanvasAt(e.clientX, e.clientY, factor);
+  }
+
+  // Fullscreen short-circuit (no transform).
   if (fullscreenSession) {
     return (
       <div className="relative h-full w-full overflow-hidden bg-canvas">
@@ -131,6 +191,8 @@ export function WorkspaceCanvas() {
     );
   }
 
+  const cursor = isPanning ? 'grabbing' : spacePressed ? 'grab' : 'default';
+
   return (
     <DndContext
       sensors={sensors}
@@ -139,26 +201,68 @@ export function WorkspaceCanvas() {
       onDragCancel={handleDragCancel}
     >
       <div
+        ref={containerRef}
         className="relative h-full w-full overflow-hidden bg-canvas"
-        onMouseDown={handleCanvasClick}
+        onMouseDown={handleCanvasMouseDown}
+        onWheel={handleWheel}
+        // Auxclick (middle button) doesn't fire onMouseDown reliably in
+        // some setups — bind onAuxClick fallback for some macOS mice.
         style={{
+          // Background grid follows the canvas transform via background-position.
           backgroundImage:
             'radial-gradient(circle, var(--bg-canvas-dot) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
+          backgroundSize: `${24 * canvasTransform.scale}px ${24 * canvasTransform.scale}px`,
+          backgroundPosition: `${canvasTransform.x}px ${canvasTransform.y}px`,
+          cursor,
         }}
       >
-        {sortedSessions.length === 0 ? (
-          <EmptyCanvas onCreate={() => openModal({ type: 'newSession' })} />
-        ) : (
-          sortedSessions.map((session) => (
-            <DraggableSessionWrapper
-              key={session.id}
-              session={session}
-              isFocused={focusedId === session.id}
-              isBeingDragged={draggingId === session.id}
-              isFilteredOut={filterTagId !== null && !session.tags.includes(filterTagId)}
-            />
-          ))
+        {/* Inner transformed layer holding all panels. */}
+        <div
+          className="absolute"
+          style={{
+            top: 0,
+            left: 0,
+            transform: `translate3d(${canvasTransform.x}px, ${canvasTransform.y}px, 0) scale(${canvasTransform.scale})`,
+            transformOrigin: '0 0',
+            // 8000×8000 logical canvas (still feels infinite at typical use).
+            width: 8000,
+            height: 8000,
+            willChange: isPanning ? 'transform' : undefined,
+          }}
+        >
+          {sortedSessions.length === 0 ? (
+            <div
+              className="absolute"
+              style={{
+                left: 0,
+                top: 0,
+                width: containerRef.current?.clientWidth ?? 800,
+                height: containerRef.current?.clientHeight ?? 600,
+              }}
+            >
+              <EmptyCanvas onCreate={() => openModal({ type: 'newSession' })} />
+            </div>
+          ) : (
+            sortedSessions.map((session) => (
+              <DraggableSessionWrapper
+                key={session.id}
+                session={session}
+                isFocused={focusedId === session.id}
+                isBeingDragged={draggingId === session.id}
+                isFilteredOut={filterTagId !== null && !session.tags.includes(filterTagId)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* MiniMap overlay (sits OUTSIDE the transformed layer). */}
+        {sortedSessions.length > 0 && containerRef.current && (
+          <MiniMap
+            viewport={{
+              width: containerRef.current.clientWidth,
+              height: containerRef.current.clientHeight,
+            }}
+          />
         )}
       </div>
 
@@ -167,6 +271,12 @@ export function WorkspaceCanvas() {
       </DragOverlay>
     </DndContext>
   );
+}
+
+function isInputElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
 
 interface DraggableWrapperProps {
@@ -222,7 +332,6 @@ function DraggableSessionWrapper({
         minHeight={MIN_PANEL_H}
         onResize={({ size, position }) => {
           resizeSession(session.id, size);
-          // Only commit position if W/N edges moved (otherwise it's unchanged)
           if (position.x !== session.position.x || position.y !== session.position.y) {
             moveSession(session.id, position);
           }

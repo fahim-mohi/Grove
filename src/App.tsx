@@ -25,6 +25,9 @@ export function App() {
   const toggleSidebar = useWorkspaceStore((s) => s.toggleSidebar);
   const darkMode = useSettingsStore((s) => s.darkMode);
   const setDarkMode = useSettingsStore((s) => s.setDarkMode);
+  const zoomCanvasAt = useWorkspaceStore((s) => s.zoomCanvasAt);
+  const resetCanvas = useWorkspaceStore((s) => s.resetCanvas);
+  const fitAllToBounds = useWorkspaceStore((s) => s.fitAllToBounds);
 
   useEffect(() => {
     setVersions(window.grove.system.versions());
@@ -49,11 +52,25 @@ export function App() {
       } else if (e.key === ',') {
         e.preventDefault();
         openModal({ type: 'settings' });
+      } else if (e.key === '0') {
+        e.preventDefault();
+        resetCanvas();
+      } else if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        zoomCanvasAt(window.innerWidth / 2, window.innerHeight / 2, 1.1);
+      } else if (e.key === '-') {
+        e.preventDefault();
+        zoomCanvasAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          fitAllToBounds({ width: window.innerWidth, height: window.innerHeight });
+        }
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openModal, toggleSidebar, darkMode, setDarkMode]);
+  }, [openModal, toggleSidebar, darkMode, setDarkMode, resetCanvas, zoomCanvasAt, fitAllToBounds]);
 
   return (
     <ThemeProvider>

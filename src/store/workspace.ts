@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { NewSessionInput, Session, Size, Tag, Vec2 } from './types';
+import type { CanvasTransform, NewSessionInput, Session, Size, Tag, Vec2 } from './types';
 
 // Phase 3 subset of the full DESIGN.md §10.1 workspace store.
 // Adds: sessions/order/focus/drag state + the 7 actions the canvas needs.
@@ -36,6 +36,7 @@ export interface WorkspaceState {
   sidebarCollapsed: boolean;
   searchQuery: string;
   modal: ModalState;
+  canvasTransform: CanvasTransform;
 
   // Session actions
   addSession: (input: NewSessionInput) => string;
@@ -54,6 +55,13 @@ export interface WorkspaceState {
   setSearchQuery: (q: string) => void;
   openModal: (modal: ModalState) => void;
   closeModal: () => void;
+
+  // Canvas transform actions
+  setCanvasTransform: (next: Partial<CanvasTransform>) => void;
+  panCanvas: (dx: number, dy: number) => void;
+  zoomCanvasAt: (clientX: number, clientY: number, factor: number) => void;
+  resetCanvas: () => void;
+  fitAllToBounds: (bounds: { width: number; height: number }) => void;
 
   // Tag actions
   addTag: (input: { name: string; color: string }) => string;
@@ -81,6 +89,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   sidebarCollapsed: false,
   searchQuery: '',
   modal: null,
+  canvasTransform: { x: 0, y: 0, scale: 1 },
 
   addSession(input) {
     const id = nanoid();
@@ -225,6 +234,81 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   closeModal() {
     set({ modal: null });
+  },
+
+  setCanvasTransform(next) {
+    set((state) => {
+      const merged = { ...state.canvasTransform, ...next };
+      // Clamp scale 0.5–1.5 per DESIGN.md §7.3.
+      merged.scale = Math.max(0.5, Math.min(1.5, merged.scale));
+      return { canvasTransform: merged };
+    });
+  },
+
+  panCanvas(dx, dy) {
+    set((state) => ({
+      canvasTransform: {
+        ...state.canvasTransform,
+        x: state.canvasTransform.x + dx,
+        y: state.canvasTransform.y + dy,
+      },
+    }));
+  },
+
+  zoomCanvasAt(clientX, clientY, factor) {
+    set((state) => {
+      const t = state.canvasTransform;
+      const newScale = Math.max(0.5, Math.min(1.5, t.scale * factor));
+      // Zoom anchored at the cursor position so the point under the
+      // cursor stays put. Solve for new x/y:
+      //   worldPoint = (clientX - t.x) / t.scale  must equal
+      //   (clientX - newX) / newScale
+      // ⇒ newX = clientX - worldPoint * newScale
+      const worldX = (clientX - t.x) / t.scale;
+      const worldY = (clientY - t.y) / t.scale;
+      return {
+        canvasTransform: {
+          x: clientX - worldX * newScale,
+          y: clientY - worldY * newScale,
+          scale: newScale,
+        },
+      };
+    });
+  },
+
+  resetCanvas() {
+    set({ canvasTransform: { x: 0, y: 0, scale: 1 } });
+  },
+
+  fitAllToBounds(viewport) {
+    const state = get();
+    const sessions = state.sessionOrder
+      .map((id) => state.sessions[id])
+      .filter((s): s is Session => Boolean(s));
+    if (sessions.length === 0) {
+      set({ canvasTransform: { x: 0, y: 0, scale: 1 } });
+      return;
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const s of sessions) {
+      minX = Math.min(minX, s.position.x);
+      minY = Math.min(minY, s.position.y);
+      maxX = Math.max(maxX, s.position.x + s.size.width);
+      maxY = Math.max(maxY, s.position.y + s.size.height);
+    }
+    const padding = 64;
+    const contentW = Math.max(1, maxX - minX);
+    const contentH = Math.max(1, maxY - minY);
+    const scale = Math.max(
+      0.5,
+      Math.min(1.5, Math.min((viewport.width - padding * 2) / contentW, (viewport.height - padding * 2) / contentH)),
+    );
+    const x = padding - minX * scale + (viewport.width - padding * 2 - contentW * scale) / 2;
+    const y = padding - minY * scale + (viewport.height - padding * 2 - contentH * scale) / 2;
+    set({ canvasTransform: { x, y, scale } });
   },
 
   addTag(input) {
