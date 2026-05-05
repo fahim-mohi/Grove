@@ -3,6 +3,7 @@ import { Terminal, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { registerTerminal } from '../themes/registry';
 
 export interface UseTerminalOptions {
   sessionId: string;
@@ -39,6 +40,7 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
   const dataUnsubRef = useRef<(() => void) | null>(null);
   const exitUnsubRef = useRef<(() => void) | null>(null);
   const dataDisposableRef = useRef<{ dispose: () => void } | null>(null);
+  const unregisterRef = useRef<(() => void) | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Memoize the latest options so we can read them inside the mount effect
@@ -51,12 +53,14 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
     dataDisposableRef.current?.dispose();
     dataUnsubRef.current?.();
     exitUnsubRef.current?.();
+    unregisterRef.current?.();
     terminalRef.current?.dispose();
     terminalRef.current = null;
     fitAddonRef.current = null;
     dataUnsubRef.current = null;
     exitUnsubRef.current = null;
     dataDisposableRef.current = null;
+    unregisterRef.current = null;
   }
 
   const setContainerRef = (node: HTMLDivElement | null): void => {
@@ -140,6 +144,7 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
 
     terminalRef.current = term;
     fitAddonRef.current = fit;
+    unregisterRef.current = registerTerminal(term);
   };
 
   // Apply theme changes without recreating the terminal.

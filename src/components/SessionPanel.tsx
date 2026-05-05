@@ -2,7 +2,6 @@ import { useEffect, useRef, type HTMLAttributes } from 'react';
 import { useTerminal } from '../hooks/useTerminal';
 import { useSession } from '../hooks/useSession';
 import { SessionHeader } from './SessionHeader';
-import { xtermClaudeLight } from '../themes/xterm-claude';
 import { useWorkspaceStore } from '../store/workspace';
 
 export interface SessionPanelProps {
@@ -23,10 +22,13 @@ const FIT_DEBOUNCE_MS = 50;
 export function SessionPanel(props: SessionPanelProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Subscribe to PTY data BEFORE useSession creates the PTY.
+  // Subscribe to PTY data BEFORE useSession creates the PTY. The xterm
+  // theme is no longer passed in — ThemeProvider applies the active
+  // theme to all registered terminals via the registry, so xterm uses
+  // its built-in default until the first ThemeProvider effect runs (which
+  // happens synchronously on mount).
   const term = useTerminal({
     sessionId: props.sessionId,
-    theme: xtermClaudeLight,
   });
 
   const session = useSession({
