@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 import { useTerminal } from '../hooks/useTerminal';
 import { useSession } from '../hooks/useSession';
 import { SessionHeader } from './SessionHeader';
+import { SessionBanner } from './SessionBanner';
 import { useWorkspaceStore } from '../store/workspace';
 import { useSettingsStore } from '../store/settings';
 import type { Tag } from '../store/types';
@@ -121,6 +122,7 @@ export function SessionPanel(props: SessionPanelProps) {
         onToggleFullscreen={() => toggleFullscreen(props.sessionId)}
         dragHandleProps={props.dragHandleProps}
       />
+      <SessionBanner status={session.status} onRestart={() => void session.restart()} />
       <div
         className="flex-1 overflow-hidden bg-panel"
         style={{ padding: '12px 16px' }}

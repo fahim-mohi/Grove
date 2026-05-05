@@ -48,13 +48,24 @@ export function WorkspaceCanvas() {
   const [spacePressed, setSpacePressed] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
 
+  const setFilterTag = useWorkspaceStore((s) => s.setFilterTag);
+  const tagsMap = useWorkspaceStore((s) => s.tags);
+
   const sortedSessions = useMemo(
     () => sessionOrder.map((id) => sessionsMap[id]).filter((s): s is Session => Boolean(s)),
     [sessionOrder, sessionsMap],
   );
 
+  const matchingSessions = useMemo(() => {
+    if (!filterTagId) return sortedSessions;
+    return sortedSessions.filter((s) => s.tags.includes(filterTagId));
+  }, [sortedSessions, filterTagId]);
+
   const draggingSession = draggingId ? sessionsMap[draggingId] : null;
   const fullscreenSession = fullscreenId ? sessionsMap[fullscreenId] : null;
+  const filteredOutAll =
+    filterTagId !== null && sortedSessions.length > 0 && matchingSessions.length === 0;
+  const activeFilterTag = filterTagId ? tagsMap[filterTagId] : null;
 
   // Esc exits fullscreen.
   useEffect(() => {
@@ -263,6 +274,30 @@ export function WorkspaceCanvas() {
               height: containerRef.current.clientHeight,
             }}
           />
+        )}
+
+        {filteredOutAll && activeFilterTag && (
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            style={{ zIndex: 41 }}
+          >
+            <div className="pointer-events-auto flex flex-col items-center gap-3 rounded-panel border border-edge bg-modal px-8 py-6 shadow-modal">
+              <p className="font-ui text-[13px] text-text-secondary">
+                No sessions tagged{' '}
+                <span style={{ color: activeFilterTag.color, fontWeight: 600 }}>
+                  {activeFilterTag.name}
+                </span>
+                .
+              </p>
+              <button
+                type="button"
+                onClick={() => setFilterTag(null)}
+                className="cursor-pointer rounded-control bg-accent px-3 py-1.5 font-ui text-[12px] font-semibold text-text-onAccent transition-colors duration-fast ease-out hover:bg-accent-hover"
+              >
+                Clear filter
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

@@ -8,6 +8,7 @@ import { ThemeProvider } from './components/ThemeProvider';
 import { useWorkspaceStore } from './store/workspace';
 import { useSettingsStore } from './store/settings';
 import { useShortcuts } from './hooks/useShortcuts';
+import { setSaveErrorListener } from './store/persistence';
 
 interface Versions {
   electron: string;
@@ -30,9 +31,14 @@ export function App() {
   const resetCanvas = useWorkspaceStore((s) => s.resetCanvas);
   const fitAllToBounds = useWorkspaceStore((s) => s.fitAllToBounds);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   useEffect(() => {
     setVersions(window.grove.system.versions());
     void window.grove.system.isClaudeInstalled().then(setClaudeInstalled);
+    return setSaveErrorListener((message) => {
+      setSaveError(message);
+    });
   }, []);
 
   useShortcuts();
@@ -142,6 +148,27 @@ export function App() {
 
         <NewSessionDialog open={modal?.type === 'newSession'} onClose={closeModal} />
         <SettingsModal open={modal?.type === 'settings'} onClose={closeModal} />
+
+        {saveError && (
+          <div
+            role="alert"
+            className="fixed bottom-4 left-1/2 z-tooltip flex -translate-x-1/2 items-center gap-3 rounded-control border border-edge bg-modal px-4 py-2 shadow-modal"
+            style={{ color: 'var(--danger)', zIndex: 100 }}
+          >
+            <span aria-hidden>●</span>
+            <span className="font-ui text-[12px]">{saveError}</span>
+            <button
+              type="button"
+              onClick={() => setSaveError(null)}
+              aria-label="Dismiss"
+              className="cursor-pointer rounded-control p-1 text-text-muted transition-colors duration-fast ease-out hover:text-text-primary"
+            >
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden>
+                <path d="M6 6L18 18M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </ThemeProvider>
   );

@@ -9,7 +9,16 @@ import { useWorkspaceStore } from './workspace';
 import { useSettingsStore } from './settings';
 import type { PersistedState } from '../../shared/persistence';
 import { defaultPersistedState } from '../../shared/persistence';
-import type { Session, Tag } from './types';
+import type { Session, Tag, Vec2 } from './types';
+
+let saveErrorListener: ((message: string) => void) | null = null;
+
+export function setSaveErrorListener(handler: (message: string) => void): () => void {
+  saveErrorListener = handler;
+  return () => {
+    saveErrorListener = null;
+  };
+}
 
 const DEBOUNCE_MS = 200;
 
@@ -23,7 +32,11 @@ function queueSave(patch: Partial<PersistedState>): void {
     saveTimer = null;
     const toSave = pendingPatch;
     pendingPatch = {};
-    void window.grove.store.setMany(toSave as Record<string, unknown>);
+    window.grove.store.setMany(toSave as Record<string, unknown>).catch((err: unknown) => {
+      const msg =
+        err instanceof Error ? err.message : 'Could not save workspace state.';
+      saveErrorListener?.(`Could not save workspace state — ${msg}`);
+    });
   }, DEBOUNCE_MS);
 }
 
@@ -53,11 +66,22 @@ export async function hydrateStores(): Promise<PersistedState> {
   const workspace = useWorkspaceStore.getState();
   if (Array.isArray(persisted.sessions) && persisted.sessions.length > 0) {
     const sessionsMap: Record<string, Session> = {};
+    const usedPositions: Vec2[] = [];
     persisted.sessions
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .forEach((s, idx) => {
-        sessionsMap[s.id] = { ...s, sortOrder: idx };
+        // Defensive: if two sessions saved with identical position
+        // (rare — usually only after a corrupt restore), offset
+        // duplicates by 24px increments until unique.
+        let pos = s.position;
+        let attempt = 0;
+        while (usedPositions.some((p) => p.x === pos.x && p.y === pos.y) && attempt < 50) {
+          pos = { x: pos.x + 24, y: pos.y + 24 };
+          attempt += 1;
+        }
+        usedPositions.push(pos);
+        sessionsMap[s.id] = { ...s, position: pos, sortOrder: idx };
       });
     useWorkspaceStore.setState({
       sessions: sessionsMap,
