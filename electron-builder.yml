@@ -1,0 +1,39 @@
+appId: com.grove.app
+productName: Grove
+copyright: Copyright © 2026 Fahim
+directories:
+  output: dist-app
+  buildResources: assets
+files:
+  - out/**/*
+  - package.json
+  - "!**/*.{md,markdown}"
+  - "!{.git,.github,.vscode}"
+asarUnpack:
+  - "**/node_modules/node-pty/**"
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - universal
+  icon: assets/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.plist
+dmg:
+  title: "Install Grove"
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 160
+      y: 180
+      type: file
+    - x: 380
+      y: 180
+      type: link
+      path: /Applications
+extraMetadata:
+  main: out/main/index.js

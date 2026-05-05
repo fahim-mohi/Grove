@@ -1,0 +1,86 @@
+import type { Config } from 'tailwindcss';
+
+export default {
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        canvas: 'var(--bg-canvas)',
+        panel: 'var(--bg-panel)',
+        panelHead: 'var(--bg-panel-header)',
+        sidebar: 'var(--bg-sidebar)',
+        sidebarHover: 'var(--bg-sidebar-hover)',
+        sidebarActive: 'var(--bg-sidebar-active)',
+        toolbar: 'var(--bg-toolbar)',
+        modal: 'var(--bg-modal)',
+        overlay: 'var(--bg-modal-overlay)',
+        input: 'var(--bg-input)',
+        tag: 'var(--bg-tag)',
+        accent: {
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          pressed: 'var(--accent-pressed)',
+          soft: 'var(--accent-soft)',
+          ring: 'var(--accent-ring)',
+        },
+        text: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+          onAccent: 'var(--text-on-accent)',
+        },
+        edge: {
+          DEFAULT: 'var(--border-default)',
+          strong: 'var(--border-strong)',
+          subtle: 'var(--border-subtle)',
+        },
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
+        info: 'var(--info)',
+      },
+      borderRadius: {
+        panel: 'var(--radius-panel)',
+        control: 'var(--radius-control)',
+        pill: 'var(--radius-pill)',
+      },
+      boxShadow: {
+        'panel-resting': 'var(--shadow-panel-resting)',
+        'panel-focused': 'var(--shadow-panel-focused)',
+        'panel-dragging': 'var(--shadow-panel-dragging)',
+        modal: 'var(--shadow-modal)',
+      },
+      fontFamily: {
+        ui: 'var(--font-ui)',
+        terminal: 'var(--font-terminal)',
+      },
+      transitionDuration: {
+        fast: '120ms',
+        base: '200ms',
+        slow: '300ms',
+        deliberate: '400ms',
+      },
+      transitionTimingFunction: {
+        out: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        in: 'cubic-bezier(0.7, 0, 0.84, 0)',
+        inOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
+      zIndex: {
+        'canvas-bg': '0',
+        'panel-resting': '10',
+        'panel-focused': '20',
+        'panel-dragging': '30',
+        'canvas-overlay': '40',
+        sidebar: '50',
+        toolbar: '60',
+        'context-menu': '70',
+        'modal-scrim': '80',
+        modal: '90',
+        tooltip: '100',
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config;
