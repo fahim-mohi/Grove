@@ -13,6 +13,7 @@ import { useWorkspaceStore } from '../store/workspace';
 import { SessionPanel } from './SessionPanel';
 import { PanelChrome } from './PanelChrome';
 import { ResizeHandles } from './ResizeHandles';
+import { EmptyCanvas } from './EmptyCanvas';
 import type { Session } from '../store/types';
 
 const Z_PANEL_RESTING = 10;
@@ -36,6 +37,7 @@ export function WorkspaceCanvas() {
   const bringToFront = useWorkspaceStore((s) => s.bringToFront);
   const focusSession = useWorkspaceStore((s) => s.focusSession);
   const exitFullscreen = useWorkspaceStore((s) => s.exitFullscreen);
+  const openModal = useWorkspaceStore((s) => s.openModal);
 
   const sortedSessions = useMemo(
     () => sessionOrder.map((id) => sessionsMap[id]).filter((s): s is Session => Boolean(s)),
@@ -143,14 +145,18 @@ export function WorkspaceCanvas() {
           backgroundSize: '24px 24px',
         }}
       >
-        {sortedSessions.map((session) => (
-          <DraggableSessionWrapper
-            key={session.id}
-            session={session}
-            isFocused={focusedId === session.id}
-            isBeingDragged={draggingId === session.id}
-          />
-        ))}
+        {sortedSessions.length === 0 ? (
+          <EmptyCanvas onCreate={() => openModal({ type: 'newSession' })} />
+        ) : (
+          sortedSessions.map((session) => (
+            <DraggableSessionWrapper
+              key={session.id}
+              session={session}
+              isFocused={focusedId === session.id}
+              isBeingDragged={draggingId === session.id}
+            />
+          ))
+        )}
       </div>
 
       <DragOverlay dropAnimation={null}>

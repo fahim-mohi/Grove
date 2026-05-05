@@ -64,5 +64,6 @@ export interface GroveApi {
   };
   dialog: {
     confirm: (opts: ConfirmOptions) => Promise<boolean>;
+    chooseDirectory: (opts?: { title?: string; defaultPath?: string }) => Promise<string | null>;
   };
 }

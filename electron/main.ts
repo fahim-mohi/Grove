@@ -86,6 +86,25 @@ function registerIpcHandlers(): void {
     return ptyManager.isClaudeInstalled();
   });
 
+  ipcMain.handle(
+    IpcChannel.DIALOG_CHOOSE_DIRECTORY,
+    async (_event, opts: { title?: string; defaultPath?: string }) => {
+      const parent = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+      const baseOpts = {
+        title: opts.title,
+        defaultPath: opts.defaultPath,
+        properties: ['openDirectory', 'createDirectory'] as Array<
+          'openDirectory' | 'createDirectory'
+        >,
+      };
+      const result = parent
+        ? await dialog.showOpenDialog(parent, baseOpts)
+        : await dialog.showOpenDialog(baseOpts);
+      if (result.canceled || result.filePaths.length === 0) return null;
+      return result.filePaths[0] ?? null;
+    },
+  );
+
   ipcMain.handle(IpcChannel.DIALOG_CONFIRM, async (_event, opts: ConfirmOptions) => {
     const parent = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
     const okLabel = opts.okLabel ?? (opts.danger ? 'Confirm' : 'OK');

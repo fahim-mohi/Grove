@@ -62,6 +62,9 @@ const groveApi = {
     confirm(opts: ConfirmOptions): Promise<boolean> {
       return ipcRenderer.invoke(IpcChannel.DIALOG_CONFIRM, opts);
     },
+    chooseDirectory(opts?: { title?: string; defaultPath?: string }): Promise<string | null> {
+      return ipcRenderer.invoke(IpcChannel.DIALOG_CHOOSE_DIRECTORY, opts ?? {});
+    },
   },
 } as const;
 

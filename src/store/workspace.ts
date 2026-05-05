@@ -15,6 +15,11 @@ const DEFAULT_POSITION: Vec2 = { x: 80, y: 80 };
 const DEFAULT_COLOR = '#D97706'; // claude orange
 const STAGGER_OFFSET = 32;
 
+export type ModalState =
+  | { type: 'newSession' }
+  | { type: 'settings' }
+  | null;
+
 export interface WorkspaceState {
   sessions: Record<string, Session>;
   sessionOrder: string[];
@@ -23,6 +28,11 @@ export interface WorkspaceState {
   draggingSessionId: string | null;
   fullscreenSessionId: string | null;
 
+  // UI
+  sidebarCollapsed: boolean;
+  searchQuery: string;
+  modal: ModalState;
+
   // Actions
   addSession: (input: NewSessionInput) => string;
   removeSession: (id: string) => void;
@@ -30,11 +40,16 @@ export interface WorkspaceState {
   recolorSession: (id: string, color: string) => void;
   moveSession: (id: string, position: Vec2) => void;
   resizeSession: (id: string, size: Size) => void;
+  reorderSessions: (orderedIds: string[]) => void;
   focusSession: (id: string | null) => void;
   bringToFront: (id: string) => void;
   setDragging: (id: string | null) => void;
   toggleFullscreen: (id: string) => void;
   exitFullscreen: () => void;
+  toggleSidebar: () => void;
+  setSearchQuery: (q: string) => void;
+  openModal: (modal: ModalState) => void;
+  closeModal: () => void;
 
   // Selectors (functions returning derived data — read with shallow if needed)
   getSortedSessions: () => Session[];
@@ -46,6 +61,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   focusedSessionId: null,
   draggingSessionId: null,
   fullscreenSessionId: null,
+
+  sidebarCollapsed: false,
+  searchQuery: '',
+  modal: null,
 
   addSession(input) {
     const id = nanoid();
@@ -159,6 +178,37 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   exitFullscreen() {
     set({ fullscreenSessionId: null });
+  },
+
+  reorderSessions(orderedIds) {
+    set((state) => {
+      const next: Record<string, Session> = {};
+      orderedIds.forEach((id, idx) => {
+        const s = state.sessions[id];
+        if (s) next[id] = { ...s, sortOrder: idx };
+      });
+      // Preserve any sessions not in orderedIds (defensive)
+      Object.keys(state.sessions).forEach((id) => {
+        if (!next[id] && state.sessions[id]) next[id] = state.sessions[id];
+      });
+      return { sessions: next, sessionOrder: orderedIds };
+    });
+  },
+
+  toggleSidebar() {
+    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+  },
+
+  setSearchQuery(q) {
+    set({ searchQuery: q });
+  },
+
+  openModal(modal) {
+    set({ modal });
+  },
+
+  closeModal() {
+    set({ modal: null });
   },
 
   getSortedSessions() {
