@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSettingsStore } from '../store/settings';
+import { useWorkspaceStore } from '../store/workspace';
 import { themeOrder, themes } from '../themes';
 import { ThemePreviewCard } from './ThemePreviewCard';
+import { TagBadge } from './TagBadge';
 
 interface ToolbarProps {
   sessionCount: number;
@@ -37,6 +39,9 @@ export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: Toolb
   const darkMode = useSettingsStore((s) => s.darkMode);
   const setDarkMode = useSettingsStore((s) => s.setDarkMode);
   const isDark = useEffectiveDark();
+  const filterTagId = useWorkspaceStore((s) => s.filterTagId);
+  const filterTag = useWorkspaceStore((s) => (filterTagId ? s.tags[filterTagId] : null));
+  const setFilterTag = useWorkspaceStore((s) => s.setFilterTag);
 
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement | null>(null);
@@ -81,6 +86,18 @@ export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: Toolb
         <span className="font-ui text-xs text-text-muted">
           sessions <span className="text-text-secondary">{sessionCount}</span>
         </span>
+        {filterTag && (
+          <span className="no-drag flex items-center gap-1.5">
+            <span className="font-ui text-[11px] text-text-muted">filter:</span>
+            <TagBadge
+              tag={filterTag}
+              size="sm"
+              active
+              removable
+              onRemove={() => setFilterTag(null)}
+            />
+          </span>
+        )}
       </div>
 
       <div className="no-drag flex items-center gap-2">

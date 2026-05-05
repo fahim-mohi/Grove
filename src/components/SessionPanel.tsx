@@ -1,13 +1,15 @@
-import { useEffect, useRef, type HTMLAttributes } from 'react';
+import { useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 import { useTerminal } from '../hooks/useTerminal';
 import { useSession } from '../hooks/useSession';
 import { SessionHeader } from './SessionHeader';
 import { useWorkspaceStore } from '../store/workspace';
+import type { Tag } from '../store/types';
 
 export interface SessionPanelProps {
   sessionId: string;
   name: string;
   color: string;
+  tagIds?: string[];
   cwd?: string;
   command?: string;
   isFocused?: boolean;
@@ -43,6 +45,15 @@ export function SessionPanel(props: SessionPanelProps) {
   const recolorSession = useWorkspaceStore((s) => s.recolorSession);
   const removeSession = useWorkspaceStore((s) => s.removeSession);
   const toggleFullscreen = useWorkspaceStore((s) => s.toggleFullscreen);
+  const tagsMap = useWorkspaceStore((s) => s.tags);
+
+  const tags = useMemo<Tag[]>(
+    () =>
+      (props.tagIds ?? [])
+        .map((id) => tagsMap[id])
+        .filter((t): t is Tag => Boolean(t)),
+    [props.tagIds, tagsMap],
+  );
 
   // ResizeObserver → debounced fit + pty.resize.
   useEffect(() => {
@@ -89,6 +100,7 @@ export function SessionPanel(props: SessionPanelProps) {
         sessionId={props.sessionId}
         name={props.name}
         color={props.color}
+        tags={tags}
         status={session.status}
         isFullscreen={props.isFullscreen}
         confirmKill={false}

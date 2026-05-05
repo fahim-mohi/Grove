@@ -11,6 +11,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useWorkspaceStore } from '../store/workspace';
 import { SessionListItem } from './SessionListItem';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+import { TagBadge } from './TagBadge';
 
 interface SidebarProps {
   onOpenNewSession: () => void;
@@ -28,6 +29,10 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
   const reorderSessions = useWorkspaceStore((s) => s.reorderSessions);
   const removeSession = useWorkspaceStore((s) => s.removeSession);
   const renameSession = useWorkspaceStore((s) => s.renameSession);
+  const tagOrder = useWorkspaceStore((s) => s.tagOrder);
+  const tagsMap = useWorkspaceStore((s) => s.tags);
+  const filterTagId = useWorkspaceStore((s) => s.filterTagId);
+  const setFilterTag = useWorkspaceStore((s) => s.setFilterTag);
 
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
@@ -194,6 +199,29 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
           </DndContext>
         )}
       </div>
+
+      {tagOrder.length > 0 && (
+        <div className="flex flex-shrink-0 flex-col gap-1.5 border-t border-edge px-3 py-3">
+          <span className="font-ui text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+            Tags
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {tagOrder.map((id) => {
+              const tag = tagsMap[id];
+              if (!tag) return null;
+              return (
+                <TagBadge
+                  key={tag.id}
+                  tag={tag}
+                  size="sm"
+                  active={filterTagId === tag.id}
+                  onClick={() => setFilterTag(filterTagId === tag.id ? null : tag.id)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <button
         type="button"

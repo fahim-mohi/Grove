@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { NewSessionInput, Session, Size, Vec2 } from './types';
+import type { NewSessionInput, Session, Size, Tag, Vec2 } from './types';
 
 // Phase 3 subset of the full DESIGN.md §10.1 workspace store.
 // Adds: sessions/order/focus/drag state + the 7 actions the canvas needs.
@@ -24,16 +24,20 @@ export interface WorkspaceState {
   sessions: Record<string, Session>;
   sessionOrder: string[];
 
+  tags: Record<string, Tag>;
+  tagOrder: string[];
+
   focusedSessionId: string | null;
   draggingSessionId: string | null;
   fullscreenSessionId: string | null;
+  filterTagId: string | null;
 
   // UI
   sidebarCollapsed: boolean;
   searchQuery: string;
   modal: ModalState;
 
-  // Actions
+  // Session actions
   addSession: (input: NewSessionInput) => string;
   removeSession: (id: string) => void;
   renameSession: (id: string, name: string) => void;
@@ -51,16 +55,28 @@ export interface WorkspaceState {
   openModal: (modal: ModalState) => void;
   closeModal: () => void;
 
-  // Selectors (functions returning derived data — read with shallow if needed)
+  // Tag actions
+  addTag: (input: { name: string; color: string }) => string;
+  renameTag: (id: string, name: string) => void;
+  recolorTag: (id: string, color: string) => void;
+  deleteTag: (id: string) => void;
+  toggleSessionTag: (sessionId: string, tagId: string) => void;
+  setFilterTag: (id: string | null) => void;
+  hydrateTags: (tags: Tag[]) => void;
+
+  // Selectors
   getSortedSessions: () => Session[];
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   sessions: {},
   sessionOrder: [],
+  tags: {},
+  tagOrder: [],
   focusedSessionId: null,
   draggingSessionId: null,
   fullscreenSessionId: null,
+  filterTagId: null,
 
   sidebarCollapsed: false,
   searchQuery: '',
@@ -209,6 +225,83 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   closeModal() {
     set({ modal: null });
+  },
+
+  addTag(input) {
+    const id = nanoid();
+    const tag: Tag = { id, name: input.name.trim(), color: input.color };
+    set((state) => ({
+      tags: { ...state.tags, [id]: tag },
+      tagOrder: [...state.tagOrder, id],
+    }));
+    return id;
+  },
+
+  renameTag(id, name) {
+    set((state) => {
+      const tag = state.tags[id];
+      if (!tag) return state;
+      const trimmed = name.trim();
+      if (!trimmed) return state;
+      return { tags: { ...state.tags, [id]: { ...tag, name: trimmed } } };
+    });
+  },
+
+  recolorTag(id, color) {
+    set((state) => {
+      const tag = state.tags[id];
+      if (!tag) return state;
+      return { tags: { ...state.tags, [id]: { ...tag, color } } };
+    });
+  },
+
+  deleteTag(id) {
+    set((state) => {
+      const nextTags = { ...state.tags };
+      delete nextTags[id];
+      // Strip the tag from any session that had it.
+      const nextSessions: Record<string, Session> = {};
+      for (const [sid, s] of Object.entries(state.sessions)) {
+        if (s.tags.includes(id)) {
+          nextSessions[sid] = { ...s, tags: s.tags.filter((t) => t !== id) };
+        } else {
+          nextSessions[sid] = s;
+        }
+      }
+      return {
+        tags: nextTags,
+        tagOrder: state.tagOrder.filter((x) => x !== id),
+        sessions: nextSessions,
+        filterTagId: state.filterTagId === id ? null : state.filterTagId,
+      };
+    });
+  },
+
+  toggleSessionTag(sessionId, tagId) {
+    set((state) => {
+      const session = state.sessions[sessionId];
+      if (!session) return state;
+      const has = session.tags.includes(tagId);
+      const nextTags = has ? session.tags.filter((t) => t !== tagId) : [...session.tags, tagId];
+      return {
+        sessions: { ...state.sessions, [sessionId]: { ...session, tags: nextTags } },
+      };
+    });
+  },
+
+  setFilterTag(id) {
+    set({ filterTagId: id });
+  },
+
+  hydrateTags(persistedTags) {
+    const map: Record<string, Tag> = {};
+    persistedTags.forEach((t) => {
+      map[t.id] = t;
+    });
+    set({
+      tags: map,
+      tagOrder: persistedTags.map((t) => t.id),
+    });
   },
 
   getSortedSessions() {

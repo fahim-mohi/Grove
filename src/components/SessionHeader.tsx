@@ -2,12 +2,15 @@ import { useEffect, useRef, useState, type CSSProperties, type HTMLAttributes } 
 import type { SessionStatus } from '../hooks/useSession';
 import { ColorPicker } from './ColorPicker';
 import { InlineRename } from './InlineRename';
+import { TagBadge } from './TagBadge';
+import type { Tag } from '../store/types';
 
 export interface SessionHeaderProps {
   sessionId: string;
   name: string;
   color: string;
   status: SessionStatus;
+  tags?: Tag[];
   isFullscreen?: boolean;
   confirmKill?: boolean;
   onRename: (next: string) => void;
@@ -21,6 +24,8 @@ export interface SessionHeaderProps {
   dragHandleProps?: HTMLAttributes<HTMLElement>;
   dragHandleStyle?: CSSProperties;
 }
+
+const MAX_INLINE_TAGS = 2;
 
 export function SessionHeader(props: SessionHeaderProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
@@ -119,6 +124,8 @@ export function SessionHeader(props: SessionHeaderProps) {
         />
       </div>
 
+      <TagsInline tags={props.tags ?? []} />
+
       <StatusBadge status={props.status} />
       <div className="flex-1" />
 
@@ -177,6 +184,48 @@ function ControlButton({
     >
       {children}
     </button>
+  );
+}
+
+function TagsInline({ tags }: { tags: Tag[] }) {
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  if (tags.length === 0) return null;
+  const inline = tags.slice(0, MAX_INLINE_TAGS);
+  const overflow = tags.slice(MAX_INLINE_TAGS);
+  return (
+    <div className="relative z-10 flex items-center gap-1">
+      {inline.map((tag) => (
+        <TagBadge key={tag.id} tag={tag} size="sm" />
+      ))}
+      {overflow.length > 0 && (
+        <div className="relative">
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseEnter={() => setOverflowOpen(true)}
+            onMouseLeave={() => setOverflowOpen(false)}
+            onClick={() => setOverflowOpen((o) => !o)}
+            aria-label={`${overflow.length} more tag${overflow.length > 1 ? 's' : ''}`}
+            className="cursor-pointer rounded-pill bg-tag px-1.5 py-0 font-ui text-[10px] font-semibold text-text-secondary transition-colors duration-fast ease-out hover:text-text-primary"
+            style={{ height: 16 }}
+          >
+            +{overflow.length}
+          </button>
+          {overflowOpen && (
+            <div
+              onMouseEnter={() => setOverflowOpen(true)}
+              onMouseLeave={() => setOverflowOpen(false)}
+              className="absolute left-0 top-full z-modal mt-1 flex flex-wrap gap-1 rounded-control border border-edge bg-modal p-1.5 shadow-modal"
+              style={{ minWidth: 120 }}
+            >
+              {overflow.map((tag) => (
+                <TagBadge key={tag.id} tag={tag} size="sm" />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

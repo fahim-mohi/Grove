@@ -9,7 +9,7 @@ import { useWorkspaceStore } from './workspace';
 import { useSettingsStore } from './settings';
 import type { PersistedState } from '../../shared/persistence';
 import { defaultPersistedState } from '../../shared/persistence';
-import type { Session } from './types';
+import type { Session, Tag } from './types';
 
 const DEBOUNCE_MS = 200;
 
@@ -40,6 +40,11 @@ function snapshotSessions(): Session[] {
     });
 }
 
+function snapshotTags(): Tag[] {
+  const state = useWorkspaceStore.getState();
+  return state.tagOrder.map((id) => state.tags[id]).filter((t): t is Tag => Boolean(t));
+}
+
 export async function hydrateStores(): Promise<PersistedState> {
   const raw = (await window.grove.store.getAll()) as PersistedState;
   const persisted = { ...defaultPersistedState(), ...raw };
@@ -64,6 +69,9 @@ export async function hydrateStores(): Promise<PersistedState> {
   if (typeof persisted.sidebarCollapsed === 'boolean') {
     workspace; // (avoid lint about unused variable)
     useWorkspaceStore.setState({ sidebarCollapsed: persisted.sidebarCollapsed });
+  }
+  if (Array.isArray(persisted.tags)) {
+    useWorkspaceStore.getState().hydrateTags(persisted.tags);
   }
 
   // Hydrate settings
@@ -93,6 +101,9 @@ export function subscribePersistence(): () => void {
       state.sessionOrder !== prev.sessionOrder
     ) {
       queueSave({ sessions: snapshotSessions() });
+    }
+    if (state.tags !== prev.tags || state.tagOrder !== prev.tagOrder) {
+      queueSave({ tags: snapshotTags() });
     }
     if (state.sidebarCollapsed !== prev.sidebarCollapsed) {
       queueSave({ sidebarCollapsed: state.sidebarCollapsed });

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Modal } from './Modal';
 import { ColorPicker, SWATCHES } from './ColorPicker';
+import { TagPickerInline } from './TagPickerInline';
 import { useWorkspaceStore } from '../store/workspace';
 
 interface NewSessionDialogProps {
@@ -18,6 +19,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
   const [color, setColor] = useState<string>(SWATCHES[1] ?? '#F97316'); // orange default
   const [cwd, setCwd] = useState<string>('');
   const [command, setCommand] = useState<string>('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   // Reset form when dialog opens. Suggest a default name based on session count.
   useEffect(() => {
@@ -25,7 +27,14 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
     setName(`${DEFAULT_NAME_PREFIX}-${sessionCount + 1}`);
     setCwd('');
     setCommand('');
+    setSelectedTagIds([]);
   }, [open, sessionCount]);
+
+  function toggleTag(id: string): void {
+    setSelectedTagIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   const valid = name.trim().length > 0;
 
@@ -35,6 +44,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
     addSession({
       name: name.trim(),
       color,
+      tags: selectedTagIds,
       cwd: cwd.trim() || undefined,
       command: command.trim() || undefined,
     });
@@ -91,6 +101,10 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
 
         <Field label="Color">
           <ColorPicker value={color} onChange={setColor} dismissable={false} />
+        </Field>
+
+        <Field label="Tags" hint="optional — group related sessions">
+          <TagPickerInline selectedIds={selectedTagIds} onToggle={toggleTag} />
         </Field>
 
         <Field

@@ -32,6 +32,7 @@ export function WorkspaceCanvas() {
   const draggingId = useWorkspaceStore((s) => s.draggingSessionId);
   const focusedId = useWorkspaceStore((s) => s.focusedSessionId);
   const fullscreenId = useWorkspaceStore((s) => s.fullscreenSessionId);
+  const filterTagId = useWorkspaceStore((s) => s.filterTagId);
   const moveSession = useWorkspaceStore((s) => s.moveSession);
   const setDragging = useWorkspaceStore((s) => s.setDragging);
   const bringToFront = useWorkspaceStore((s) => s.bringToFront);
@@ -118,6 +119,7 @@ export function WorkspaceCanvas() {
               sessionId={session.id}
               name={session.name}
               color={session.color}
+              tagIds={session.tags}
               cwd={session.cwd}
               command={session.command}
               isFocused
@@ -154,6 +156,7 @@ export function WorkspaceCanvas() {
               session={session}
               isFocused={focusedId === session.id}
               isBeingDragged={draggingId === session.id}
+              isFilteredOut={filterTagId !== null && !session.tags.includes(filterTagId)}
             />
           ))
         )}
@@ -170,9 +173,15 @@ interface DraggableWrapperProps {
   session: Session;
   isFocused: boolean;
   isBeingDragged: boolean;
+  isFilteredOut: boolean;
 }
 
-function DraggableSessionWrapper({ session, isFocused, isBeingDragged }: DraggableWrapperProps) {
+function DraggableSessionWrapper({
+  session,
+  isFocused,
+  isBeingDragged,
+  isFilteredOut,
+}: DraggableWrapperProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: session.id });
   const moveSession = useWorkspaceStore((s) => s.moveSession);
   const resizeSession = useWorkspaceStore((s) => s.resizeSession);
@@ -200,7 +209,9 @@ function DraggableSessionWrapper({ session, isFocused, isBeingDragged }: Draggab
         top: session.position.y,
         width: session.size.width,
         height: session.size.height,
-        opacity: isBeingDragged ? 0.4 : 1,
+        opacity: isBeingDragged ? 0.4 : isFilteredOut ? 0.4 : 1,
+        pointerEvents: isFilteredOut ? 'none' : 'auto',
+        transition: 'opacity 200ms ease-in-out',
         zIndex: z,
       }}
     >
@@ -221,6 +232,7 @@ function DraggableSessionWrapper({ session, isFocused, isBeingDragged }: Draggab
         sessionId={session.id}
         name={session.name}
         color={session.color}
+        tagIds={session.tags}
         cwd={session.cwd}
         command={session.command}
         isFocused={isFocused}
