@@ -25,6 +25,8 @@ export interface SessionPanelProps {
 }
 
 const FIT_DEBOUNCE_MS = 50;
+const MIN_WIDTH = 420;
+const MIN_HEIGHT = 300;
 
 export function SessionPanel(props: SessionPanelProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -115,11 +117,19 @@ export function SessionPanel(props: SessionPanelProps) {
   return (
     <div
       ref={rootRef}
-      className={`flex h-full w-full flex-col overflow-hidden rounded-panel border bg-panel ${
+      className={`flex h-full w-full flex-col overflow-hidden rounded-panel border bg-panel transition-shadow duration-base ease-out ${
         props.isFocused ? 'shadow-panel-focused' : 'shadow-panel-resting'
       }`}
       style={{
-        borderColor: props.isFocused ? 'var(--border-strong)' : 'var(--border-default)',
+        // Focused panel: border + outer ring use the session's accent color.
+        borderColor: props.isFocused ? props.color : 'var(--border-default)',
+        boxShadow: props.isFocused
+          ? `0 0 0 1px ${props.color}, var(--shadow-panel-focused)`
+          : undefined,
+        transform: props.isFocused ? 'translateY(-1px)' : undefined,
+        transition: 'box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease',
+        minWidth: MIN_WIDTH,
+        minHeight: MIN_HEIGHT,
       }}
     >
       <SessionHeader

@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { NewSessionDialog } from './components/NewSessionDialog';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { Toolbar } from './components/Toolbar';
+import { CommandPalette } from './components/CommandPalette';
 import { HandoffToast } from './components/HandoffToast';
 import { TmuxMissingBanner } from './components/TmuxMissingBanner';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -141,6 +142,9 @@ export function App() {
       } else if (e.key === ',') {
         e.preventDefault();
         openModal({ type: 'settings' });
+      } else if (e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        openModal({ type: 'commandPalette' });
       } else if (e.key === '0') {
         e.preventDefault();
         resetCanvas();
@@ -168,6 +172,11 @@ export function App() {
           sessionCount={sessionCount}
           claudeInstalled={claudeInstalled}
           onOpenSettings={() => openModal({ type: 'settings' })}
+          onNewSession={() => openModal({ type: 'newSession' })}
+          onFitCanvas={() =>
+            fitAllToBounds({ width: window.innerWidth, height: window.innerHeight })
+          }
+          onOpenCommandPalette={() => openModal({ type: 'commandPalette' })}
         />
 
         <TmuxMissingBanner />
@@ -187,6 +196,7 @@ export function App() {
 
         <NewSessionDialog open={modal?.type === 'newSession'} onClose={closeModal} />
         <SettingsModal open={modal?.type === 'settings'} onClose={closeModal} />
+        <CommandPalette open={modal?.type === 'commandPalette'} onClose={closeModal} />
         <HandoffToast />
 
         {saveError && (

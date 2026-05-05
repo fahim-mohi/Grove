@@ -47,8 +47,8 @@ export function SessionListItem({
       }}
       {...attributes}
       {...listeners}
-      className={`group relative flex cursor-pointer flex-col gap-1 px-3 py-1.5 transition-colors duration-fast ease-out ${
-        hasTags ? 'min-h-[44px]' : 'min-h-[36px]'
+      className={`group relative mx-1 flex cursor-pointer flex-col gap-1 rounded-control px-2 py-1 transition-colors duration-base ease-out ${
+        hasTags ? 'min-h-[44px]' : 'min-h-[34px]'
       } ${isFocused ? 'bg-sidebarActive' : 'hover:bg-sidebarHover'}`}
       role="listitem"
     >

@@ -119,7 +119,7 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
     return (
       <aside
         className="flex flex-shrink-0 flex-col items-center border-r border-edge bg-sidebar"
-        style={{ width: 44 }}
+        style={{ width: 56 }}
       >
         <button
           type="button"

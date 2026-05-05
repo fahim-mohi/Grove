@@ -11,14 +11,15 @@ import type { TmuxSessionInfo } from '../../shared/grove-api';
 //   Phase 8  → tag CRUD + filterTagId
 //   Phase 10 → canvasTransform + fitAll
 
-const DEFAULT_SIZE: Size = { width: 720, height: 480 };
+const DEFAULT_SIZE: Size = { width: 640, height: 420 };
 const DEFAULT_POSITION: Vec2 = { x: 80, y: 80 };
-const DEFAULT_COLOR = '#D97706'; // claude orange
+const DEFAULT_COLOR = '#D97745'; // grove warm orange
 const STAGGER_OFFSET = 32;
 
 export type ModalState =
   | { type: 'newSession' }
   | { type: 'settings' }
+  | { type: 'commandPalette' }
   | null;
 
 export interface WorkspaceState {

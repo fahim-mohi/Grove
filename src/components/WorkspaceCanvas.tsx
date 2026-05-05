@@ -23,7 +23,7 @@ const Z_PANEL_RESTING = 10;
 const Z_PANEL_FOCUSED = 20;
 const Z_PANEL_DRAGGING = 30;
 
-const MIN_PANEL_W = 400;
+const MIN_PANEL_W = 420;
 const MIN_PANEL_H = 300;
 
 export function WorkspaceCanvas() {
@@ -281,8 +281,8 @@ export function WorkspaceCanvas() {
         style={{
           // Background grid follows the canvas transform via background-position.
           backgroundImage:
-            'radial-gradient(circle, var(--bg-canvas-dot) 1px, transparent 1px)',
-          backgroundSize: `${24 * canvasTransform.scale}px ${24 * canvasTransform.scale}px`,
+            'radial-gradient(var(--bg-canvas-dot) 1px, transparent 1px)',
+          backgroundSize: `${18 * canvasTransform.scale}px ${18 * canvasTransform.scale}px`,
           backgroundPosition: `${canvasTransform.x}px ${canvasTransform.y}px`,
           cursor,
         }}

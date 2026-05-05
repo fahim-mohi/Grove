@@ -3,7 +3,15 @@
 // resolve through this file so neither tsconfig has to include the other
 // project's directory.
 
-export type ThemePreset = 'claude' | 'chatgpt' | 'gemini' | 'linear' | 'custom';
+export type ThemePreset =
+  | 'claude'
+  | 'grove-dark'
+  | 'paper'
+  | 'terminal-black'
+  | 'linear'
+  | 'chatgpt'
+  | 'gemini'
+  | 'custom';
 export type DarkMode = 'light' | 'dark' | 'system';
 export type CursorStyle = 'block' | 'underline' | 'bar';
 

@@ -1,104 +1,97 @@
 #!/usr/bin/env python3
-"""Generate Grove's app-icon assets from the concept PNG.
+"""Generate Grove's app-icon assets from the canonical SVG.
 
-Tightly crops the main icon (top portion of the concept artboard) and
-removes the dark concept backdrop from the corners (flood-fill from each
-corner of the orange rounded square's bounding box, knocking out matching
-dark pixels with transparency). Then resizes to a 1024×1024 master at
-assets/icon.png and builds the macOS .icns bundle.
+Reads assets/icon.svg (the spec's branching-nodes design), rasterizes it
+to a 1024×1024 PNG using Python + cairosvg if available, otherwise falls
+back to macOS's `qlmanage` or `rsvg-convert`. Then builds the macOS
+.iconset and .icns bundle.
+
+Outputs:
+    assets/icon.png    — 1024×1024 master (consumed by electron-builder)
+    assets/icon.icns   — multi-resolution macOS bundle
 
 Run: python3 scripts/build-icons.py
 """
 
-from collections import deque
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 
-from PIL import Image
-
 ROOT = Path(__file__).resolve().parent.parent
-CONCEPT = ROOT / "assets" / "concepts" / "grove-icon-concept-01.png"
+SVG = ROOT / "assets" / "icon.svg"
 OUT_PNG = ROOT / "assets" / "icon.png"
 OUT_ICNS = ROOT / "assets" / "icon.icns"
 ICONSET = ROOT / "assets" / "icon.iconset"
 
-# Tight bounds on the rounded orange square in the 1254×1254 concept.
-CROP_LEFT = 360
-CROP_TOP = 70
-CROP_RIGHT = 900
-CROP_BOTTOM = 610
 
-# A pixel is considered "concept backdrop" when its R/G/B are all
-# below this threshold AND the differences between channels are small
-# (close to neutral dark, not a saturated dark hue from the icon body).
-DARK_THRESHOLD = 60
+def rasterize_svg_to_png(svg_path: Path, png_path: Path, size: int) -> None:
+    """Try cairosvg first (clean Python pipeline), fall back to native tools."""
+    # Attempt 1: cairosvg
+    try:
+        import cairosvg  # type: ignore
 
+        cairosvg.svg2png(
+            url=str(svg_path),
+            write_to=str(png_path),
+            output_width=size,
+            output_height=size,
+        )
+        return
+    except ImportError:
+        pass
 
-def is_concept_dark(rgba: tuple[int, int, int, int]) -> bool:
-    r, g, b, _a = rgba
-    if r > DARK_THRESHOLD or g > DARK_THRESHOLD or b > DARK_THRESHOLD:
-        return False
-    if abs(r - g) > 15 or abs(g - b) > 15 or abs(r - b) > 15:
-        return False
-    return True
+    # Attempt 2: rsvg-convert (Homebrew librsvg)
+    if shutil.which("rsvg-convert"):
+        subprocess.run(
+            [
+                "rsvg-convert",
+                "-w",
+                str(size),
+                "-h",
+                str(size),
+                "-o",
+                str(png_path),
+                str(svg_path),
+            ],
+            check=True,
+        )
+        return
 
+    # Attempt 3: qlmanage (built-in macOS) — uses thumbnail pipeline
+    if shutil.which("qlmanage"):
+        tmp_dir = png_path.parent / "_qltmp"
+        tmp_dir.mkdir(exist_ok=True)
+        subprocess.run(
+            ["qlmanage", "-t", "-s", str(size), "-o", str(tmp_dir), str(svg_path)],
+            check=True,
+            capture_output=True,
+        )
+        produced = next(tmp_dir.glob("*.png"), None)
+        if produced is None:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            raise RuntimeError("qlmanage produced no output")
+        produced.replace(png_path)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return
 
-def knockout_dark_corners(img: Image.Image) -> Image.Image:
-    """Flood-fill from each corner — knocks out the rounded-square's
-    dark exterior without touching pixels inside the icon body."""
-    w, h = img.size
-    px = img.load()
-    visited = [[False] * h for _ in range(w)]
-
-    def flood(start_x: int, start_y: int) -> None:
-        if px is None:
-            return
-        if not is_concept_dark(px[start_x, start_y]):
-            return
-        q: deque[tuple[int, int]] = deque()
-        q.append((start_x, start_y))
-        while q:
-            x, y = q.popleft()
-            if x < 0 or y < 0 or x >= w or y >= h:
-                continue
-            if visited[x][y]:
-                continue
-            if not is_concept_dark(px[x, y]):
-                continue
-            visited[x][y] = True
-            px[x, y] = (0, 0, 0, 0)
-            q.append((x + 1, y))
-            q.append((x - 1, y))
-            q.append((x, y + 1))
-            q.append((x, y - 1))
-
-    for cx, cy in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
-        flood(cx, cy)
-
-    return img
+    sys.exit(
+        "No SVG rasterizer found. Install one:\n"
+        "  pip install cairosvg          # cleanest\n"
+        "  brew install librsvg          # rsvg-convert\n"
+        "qlmanage is built-in but slowest.",
+    )
 
 
 def main() -> int:
-    if not CONCEPT.exists():
-        sys.exit(f"concept not found at {CONCEPT}")
+    if not SVG.exists():
+        sys.exit(f"icon source not found: {SVG}")
 
-    src = Image.open(CONCEPT).convert("RGBA")
-    cropped = src.crop((CROP_LEFT, CROP_TOP, CROP_RIGHT, CROP_BOTTOM))
-    cropped = knockout_dark_corners(cropped)
+    print(f"rasterizing {SVG.relative_to(ROOT)} → 1024×1024 PNG")
+    rasterize_svg_to_png(SVG, OUT_PNG, 1024)
+    print(f"wrote {OUT_PNG.relative_to(ROOT)}")
 
-    # Square pad (should be near-square already).
-    w, h = cropped.size
-    side = max(w, h)
-    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-    square.paste(cropped, ((side - w) // 2, (side - h) // 2), cropped)
-
-    master = square.resize((1024, 1024), Image.LANCZOS)
-    master.save(OUT_PNG, optimize=True)
-    print(f"wrote {OUT_PNG.relative_to(ROOT)} ({master.size[0]}×{master.size[1]})")
-
-    # macOS iconset structure.
+    # Build macOS .iconset
     if ICONSET.exists():
         shutil.rmtree(ICONSET)
     ICONSET.mkdir(parents=True)
@@ -106,10 +99,12 @@ def main() -> int:
     sizes = [16, 32, 64, 128, 256, 512, 1024]
     for size in sizes:
         if size <= 512:
-            master.resize((size, size), Image.LANCZOS).save(ICONSET / f"icon_{size}x{size}.png")
+            label = ICONSET / f"icon_{size}x{size}.png"
+            rasterize_svg_to_png(SVG, label, size)
         if 16 < size <= 1024:
             half = size // 2
-            master.resize((size, size), Image.LANCZOS).save(ICONSET / f"icon_{half}x{half}@2x.png")
+            label2x = ICONSET / f"icon_{half}x{half}@2x.png"
+            rasterize_svg_to_png(SVG, label2x, size)
 
     if OUT_ICNS.exists():
         OUT_ICNS.unlink()

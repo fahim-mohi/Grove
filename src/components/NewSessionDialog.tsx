@@ -78,7 +78,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-control border border-edge bg-modal px-3.5 py-1.5 font-ui text-[13px] font-medium text-text-primary transition-colors duration-fast ease-out hover:bg-sidebarHover"
+            className="cursor-pointer rounded-control border border-edge bg-modal px-3.5 py-1.5 font-ui text-[13px] font-medium text-text-secondary transition-colors duration-base ease-out hover:bg-sidebarHover hover:text-text-primary"
           >
             Cancel
           </button>
@@ -86,15 +86,19 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
             type="submit"
             form="new-session-form"
             disabled={!valid}
-            className="cursor-pointer rounded-control bg-accent px-3.5 py-1.5 font-ui text-[13px] font-semibold text-text-onAccent transition-colors duration-fast ease-out hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex cursor-pointer items-center gap-1.5 rounded-control bg-accent px-3.5 py-1.5 font-ui text-[13px] font-semibold text-text-onAccent transition-colors duration-base ease-out hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Create
+            <PlusIcon />
+            Launch Session
           </button>
         </>
       }
     >
+      <p className="-mt-1 mb-4 font-ui text-[12px] text-text-muted">
+        Launch a Claude Code session in the workspace
+      </p>
       <form id="new-session-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Field label="Name" htmlFor="ns-name">
+        <Field label="Session name" htmlFor="ns-name">
           <input
             id="ns-name"
             type="text"
@@ -102,22 +106,28 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
             onChange={(e) => setName(e.target.value)}
             spellCheck={false}
             required
-            className="w-full rounded-control border border-edge bg-input px-3 py-2 font-ui text-[13px] text-text-primary outline-none focus-visible:border-accent"
+            className="w-full rounded-control border border-edge bg-input px-3 py-2 font-ui text-[13px] text-text-primary outline-none transition-colors duration-base ease-out focus-visible:border-accent"
           />
         </Field>
 
-        <Field label="Color">
-          <ColorPicker value={color} onChange={setColor} dismissable={false} />
-        </Field>
-
-        <Field label="Tags" hint="optional — group related sessions">
-          <TagPickerInline selectedIds={selectedTagIds} onToggle={toggleTag} />
+        <Field label="Command" htmlFor="ns-cmd" hint="defaults to claude when blank">
+          <input
+            id="ns-cmd"
+            type="text"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            placeholder="claude"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoComplete="off"
+            className="w-full rounded-control border border-edge bg-input px-3 py-2 font-terminal text-xs text-text-primary outline-none transition-colors duration-base ease-out placeholder:text-text-muted focus-visible:border-accent"
+          />
         </Field>
 
         <Field
           label="Working directory"
-          hint="optional — defaults to your home directory"
           htmlFor="ns-cwd"
+          hint="optional — defaults to your home directory"
         >
           <div className="flex items-center gap-2">
             <input
@@ -129,37 +139,45 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
               spellCheck={false}
               autoCapitalize="none"
               autoComplete="off"
-              className="flex-1 rounded-control border border-edge bg-input px-3 py-2 font-terminal text-xs text-text-primary outline-none placeholder:text-text-muted focus-visible:border-accent"
+              className="flex-1 rounded-control border border-edge bg-input px-3 py-2 font-terminal text-xs text-text-primary outline-none transition-colors duration-base ease-out placeholder:text-text-muted focus-visible:border-accent"
             />
             <button
               type="button"
               onClick={() => void handleChooseDir()}
-              className="cursor-pointer rounded-control border border-edge bg-modal px-3 py-2 font-ui text-[12px] font-medium text-text-primary transition-colors duration-fast ease-out hover:bg-sidebarHover"
+              className="cursor-pointer rounded-control border border-edge bg-modal px-3 py-2 font-ui text-[12px] font-medium text-text-primary transition-colors duration-base ease-out hover:bg-sidebarHover"
             >
               Choose…
             </button>
           </div>
         </Field>
 
-        <Field
-          label="Command"
-          hint="optional — overrides the default `claude` binary for this session"
-          htmlFor="ns-cmd"
-        >
-          <input
-            id="ns-cmd"
-            type="text"
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            placeholder="claude"
-            spellCheck={false}
-            autoCapitalize="none"
-            autoComplete="off"
-            className="w-full rounded-control border border-edge bg-input px-3 py-2 font-terminal text-xs text-text-primary outline-none placeholder:text-text-muted focus-visible:border-accent"
-          />
+        <Field label="Color">
+          <ColorPicker value={color} onChange={setColor} dismissable={false} />
+        </Field>
+
+        <Field label="Tags" hint="optional — group related sessions">
+          <TagPickerInline selectedIds={selectedTagIds} onToggle={toggleTag} />
         </Field>
       </form>
     </Modal>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width={12}
+      height={12}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <line x1="8" y1="3" x2="8" y2="13" />
+      <line x1="3" y1="8" x2="13" y2="8" />
+    </svg>
   );
 }
 

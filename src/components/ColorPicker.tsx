@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 
-// 12 default swatches (DESIGN.md §6.5). Picked for distinct hue + decent
-// contrast in both light and dark modes.
+// Grove session-accent palette per UI design spec §3.
+// Warm but distinct hues — picked to harmonize with the Grove Warm
+// canvas without competing with the orange brand accent.
 export const SWATCHES = [
-  '#EF4444',
-  '#F97316',
-  '#F59E0B',
-  '#EAB308',
-  '#84CC16',
-  '#22C55E',
-  '#14B8A6',
-  '#06B6D4',
-  '#3B82F6',
-  '#6366F1',
-  '#A855F7',
-  '#EC4899',
+  '#D97745', // orange (matches brand accent)
+  '#C98A2E', // amber
+  '#8A9A5B', // olive
+  '#6F8F72', // sage
+  '#5E7FA3', // blue
+  '#7A6DAE', // violet
+  '#B86B75', // rose
+  '#6F7378', // slate
 ] as const;
 
 const HEX_RE = /^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/;
@@ -94,7 +91,7 @@ export function ColorPicker({
       aria-label="Choose color"
       className="w-[224px] rounded-control border border-edge bg-modal p-3 shadow-modal"
     >
-      <div className="mb-3 grid grid-cols-6 gap-1.5">
+      <div className="mb-3 grid grid-cols-8 gap-1.5">
         {SWATCHES.map((swatch) => {
           const selected = swatch.toUpperCase() === value.toUpperCase();
           return (

@@ -26,6 +26,21 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Per-channel hex parsing for color-mix with the active surface.
+function hexRgb(hex: string): { r: number; g: number; b: number } | null {
+  const cleaned = hex.replace('#', '');
+  const expanded =
+    cleaned.length === 3
+      ? cleaned[0]! + cleaned[0]! + cleaned[1]! + cleaned[1]! + cleaned[2]! + cleaned[2]!
+      : cleaned;
+  if (expanded.length !== 6) return null;
+  return {
+    r: parseInt(expanded.slice(0, 2), 16),
+    g: parseInt(expanded.slice(2, 4), 16),
+    b: parseInt(expanded.slice(4, 6), 16),
+  };
+}
+
 // Per DESIGN.md §6.3:
 // - height 20px (sm), 16px (xs)
 // - padding 0 8px
@@ -53,8 +68,20 @@ export function TagBadge({
 
   const Component = onClick ? 'button' : 'span';
 
-  const baseBg = hexToRgba(tag.color, active ? 0.32 : 0.16);
-  const ringColor = hexToRgba(tag.color, active ? 0.55 : 0);
+  // Per spec §10:
+  //   bg     = color-mix(tag-color 18%, transparent)
+  //   border = color-mix(tag-color 35%, transparent)
+  //   text   = tag-color
+  // We compute manually via rgba() since CSS color-mix support varies.
+  const rgb = hexRgb(tag.color);
+  const fillAlpha = active ? 0.34 : 0.18;
+  const borderAlpha = active ? 0.60 : 0.35;
+  const baseBg = rgb
+    ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${fillAlpha})`
+    : hexToRgba(tag.color, fillAlpha);
+  const borderColor = rgb
+    ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${borderAlpha})`
+    : hexToRgba(tag.color, borderAlpha);
 
   return (
     <Component
@@ -63,7 +90,7 @@ export function TagBadge({
       onPointerDown={(e) => e.stopPropagation()}
       aria-pressed={onClick ? active : undefined}
       title={tag.name}
-      className={`relative inline-flex flex-shrink-0 items-center gap-1 rounded-pill font-ui font-medium transition-colors duration-fast ease-out ${
+      className={`relative inline-flex flex-shrink-0 items-center gap-1 rounded-pill font-ui font-medium transition-colors duration-base ease-out ${
         onClick ? 'cursor-pointer hover:brightness-110' : ''
       }`}
       style={{
@@ -72,7 +99,7 @@ export function TagBadge({
         fontSize,
         background: baseBg,
         color: tag.color,
-        boxShadow: active ? `inset 0 0 0 1px ${ringColor}` : undefined,
+        border: `1px solid ${borderColor}`,
       }}
     >
       <span

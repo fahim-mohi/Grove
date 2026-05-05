@@ -74,8 +74,13 @@ export function SessionHeader(props: SessionHeaderProps) {
 
   return (
     <div
-      className="relative flex flex-shrink-0 items-center gap-3 border-b border-edge bg-panelHead px-3 select-none"
-      style={{ height: 'var(--header-height)' }}
+      className="relative flex flex-shrink-0 items-center gap-3 border-b border-edge bg-panelHead select-none"
+      style={{
+        height: 'var(--header-height)',
+        padding: '0 10px',
+        backgroundImage:
+          'linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(0,0,0,0.02))',
+      }}
     >
       {/* Drag handle covers the inert region (color dot + name + status).
           Controls render above with stopPropagation so they remain

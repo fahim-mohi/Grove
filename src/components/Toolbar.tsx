@@ -9,6 +9,9 @@ interface ToolbarProps {
   sessionCount: number;
   claudeInstalled: boolean | null;
   onOpenSettings?: () => void;
+  onNewSession?: () => void;
+  onFitCanvas?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 // Resolve the effective dark state for preview rendering.
@@ -33,7 +36,14 @@ function useEffectiveDark(): boolean {
   return systemDark;
 }
 
-export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: ToolbarProps) {
+export function Toolbar({
+  sessionCount,
+  claudeInstalled,
+  onOpenSettings,
+  onNewSession,
+  onFitCanvas,
+  onOpenCommandPalette,
+}: ToolbarProps) {
   const themePreset = useSettingsStore((s) => s.themePreset);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const darkMode = useSettingsStore((s) => s.darkMode);
@@ -150,6 +160,22 @@ export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: Toolb
           )}
         </div>
 
+        {onOpenCommandPalette && (
+          <ToolbarButton
+            aria-label="Command palette"
+            title="Command palette  ⌘K"
+            onClick={onOpenCommandPalette}
+          >
+            <CommandIcon />
+          </ToolbarButton>
+        )}
+
+        {onFitCanvas && (
+          <ToolbarButton aria-label="Fit canvas" title="Fit all panels  ⌘⇧F" onClick={onFitCanvas}>
+            <FitIcon />
+          </ToolbarButton>
+        )}
+
         <ToolbarButton
           aria-label={`Toggle dark mode (current: ${darkMode})`}
           title={`Dark mode: ${darkMode}  ⌘D`}
@@ -162,6 +188,17 @@ export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: Toolb
           <ToolbarButton aria-label="Settings" title="Settings  ⌘," onClick={onOpenSettings}>
             <GearIcon />
           </ToolbarButton>
+        )}
+
+        {onNewSession && (
+          <button
+            type="button"
+            onClick={onNewSession}
+            className="ml-1 cursor-pointer rounded-control bg-accent px-3 py-1 font-ui text-[12px] font-semibold text-text-onAccent transition-colors duration-base ease-out hover:bg-accent-hover"
+            title="New session  ⌘N"
+          >
+            + New
+          </button>
         )}
       </div>
     </header>
@@ -238,6 +275,22 @@ function MoonIcon() {
       aria-hidden
     >
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function FitIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
+    </svg>
+  );
+}
+
+function CommandIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 3a3 3 0 1 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12" />
     </svg>
   );
 }
