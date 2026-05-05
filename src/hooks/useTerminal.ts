@@ -47,16 +47,32 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
   const optsRef = useRef(opts);
   optsRef.current = opts;
 
+  function teardown(): void {
+    dataDisposableRef.current?.dispose();
+    dataUnsubRef.current?.();
+    exitUnsubRef.current?.();
+    terminalRef.current?.dispose();
+    terminalRef.current = null;
+    fitAddonRef.current = null;
+    dataUnsubRef.current = null;
+    exitUnsubRef.current = null;
+    dataDisposableRef.current = null;
+  }
+
   const setContainerRef = (node: HTMLDivElement | null): void => {
     if (node === containerNodeRef.current) return;
+
+    // If we already had a terminal mounted (ref transitioning element →
+    // null, or element → different element via StrictMode / HMR), tear
+    // down listeners + dispose the xterm instance BEFORE attaching to the
+    // new node. Otherwise listeners pile up on ipcRenderer.
+    if (terminalRef.current) teardown();
+
     containerNodeRef.current = node;
 
-    if (!node) {
-      // Tear-down handled by the unmount effect.
-      return;
-    }
+    if (!node) return;
 
-    // Mount
+    // Mount fresh
     const current = optsRef.current;
     const term = new Terminal({
       theme: current.theme ?? DEFAULT_THEME_FALLBACK,
@@ -143,18 +159,11 @@ export function useTerminal(opts: UseTerminalOptions): UseTerminalReturn {
     if (typeof opts.cursorBlink === 'boolean') term.options.cursorBlink = opts.cursorBlink;
   }, [opts.fontFamily, opts.fontSize, opts.cursorStyle, opts.cursorBlink]);
 
-  // Unmount cleanup.
+  // Unmount cleanup — covers the case where the parent unmounts without
+  // first calling setContainerRef(null) (rare but possible).
   useEffect(() => {
     return () => {
-      dataDisposableRef.current?.dispose();
-      dataUnsubRef.current?.();
-      exitUnsubRef.current?.();
-      terminalRef.current?.dispose();
-      terminalRef.current = null;
-      fitAddonRef.current = null;
-      dataUnsubRef.current = null;
-      exitUnsubRef.current = null;
-      dataDisposableRef.current = null;
+      teardown();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

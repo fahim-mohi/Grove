@@ -1,3 +1,4 @@
+import type { CSSProperties, HTMLAttributes } from 'react';
 import type { SessionStatus } from '../hooks/useSession';
 
 export interface SessionHeaderProps {
@@ -6,26 +7,28 @@ export interface SessionHeaderProps {
   status: SessionStatus;
   onKill: () => void;
   onRestart?: () => void;
-  // Phase 3 will pass dnd-kit listeners here so the header becomes the
-  // panel's drag handle. For Phase 2 we render visual cues only.
+  // Drag handle wiring from @dnd-kit (Phase 3+). When provided, the header
+  // becomes the panel's drag handle. Controls inside the header stop
+  // propagation so they remain clickable during drag.
+  dragHandleProps?: HTMLAttributes<HTMLElement>;
+  dragHandleStyle?: CSSProperties;
 }
 
-// Minimal Phase 2 SessionHeader. Phase 4 builds the full version with
-// inline rename, tag pills, color picker, settings, fullscreen toggle.
 export function SessionHeader(props: SessionHeaderProps) {
   return (
     <div
-      className="flex items-center gap-3 border-b border-edge bg-panelHead px-3 select-none"
-      style={{ height: 'var(--header-height)', cursor: 'grab' }}
+      {...props.dragHandleProps}
+      className="flex flex-shrink-0 items-center gap-3 border-b border-edge bg-panelHead px-3 select-none"
+      style={{
+        height: 'var(--header-height)',
+        cursor: props.dragHandleProps ? 'grab' : 'default',
+        ...props.dragHandleStyle,
+      }}
     >
       <span
         aria-hidden
         className="block flex-shrink-0 rounded-pill"
-        style={{
-          width: 8,
-          height: 8,
-          backgroundColor: props.color,
-        }}
+        style={{ width: 8, height: 8, backgroundColor: props.color }}
       />
       <span
         className="font-ui text-[13px] font-medium text-text-primary truncate"
@@ -38,6 +41,7 @@ export function SessionHeader(props: SessionHeaderProps) {
       {props.status.kind === 'exited' && props.onRestart && (
         <button
           type="button"
+          onPointerDown={stopPropagation}
           onClick={props.onRestart}
           aria-label="Restart session"
           className="cursor-pointer rounded-control px-2 py-0.5 font-ui text-[11px] font-medium text-accent transition-colors duration-fast ease-out hover:bg-accent-soft"
@@ -47,6 +51,7 @@ export function SessionHeader(props: SessionHeaderProps) {
       )}
       <button
         type="button"
+        onPointerDown={stopPropagation}
         onClick={props.onKill}
         aria-label="Kill session"
         className="cursor-pointer rounded-control p-1 text-text-muted transition-colors duration-fast ease-out hover:text-danger focus-visible:text-danger"
@@ -55,6 +60,10 @@ export function SessionHeader(props: SessionHeaderProps) {
       </button>
     </div>
   );
+}
+
+function stopPropagation(e: React.PointerEvent): void {
+  e.stopPropagation();
 }
 
 function StatusBadge({ status }: { status: SessionStatus }) {

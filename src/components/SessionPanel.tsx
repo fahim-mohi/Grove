@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type HTMLAttributes } from 'react';
 import { useTerminal } from '../hooks/useTerminal';
 import { useSession } from '../hooks/useSession';
 import { SessionHeader } from './SessionHeader';
@@ -10,20 +10,18 @@ export interface SessionPanelProps {
   color: string;
   cwd?: string;
   command?: string;
-  width?: number;
-  height?: number;
+  isFocused?: boolean;
+  // Drag handle props from @dnd-kit's useDraggable. When provided, the
+  // SessionHeader becomes the drag handle.
+  dragHandleProps?: HTMLAttributes<HTMLElement>;
 }
 
-const MIN_WIDTH = 400;
-const MIN_HEIGHT = 300;
 const FIT_DEBOUNCE_MS = 50;
 
-// One Grove session, one PTY, one xterm. Phase 2 is a fixed-size, fixed-
-// position panel — Phase 3 wraps it with @dnd-kit for free positioning on
-// the WorkspaceCanvas.
-//
-// Mount order matters: useTerminal subscribes to pty:data BEFORE useSession
-// triggers pty.create, so the welcome banner isn't lost.
+// Single Grove session: PTY + xterm + chrome. Outer dimensions are
+// controlled by the parent wrapper (DraggableSessionWrapper inside
+// WorkspaceCanvas) so this component fills 100% w/h and trusts the
+// ResizeObserver to drive xterm refits.
 export function SessionPanel(props: SessionPanelProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,7 +38,8 @@ export function SessionPanel(props: SessionPanelProps) {
     initialRows: 30,
   });
 
-  // ResizeObserver → debounced fit + pty.resize
+  // ResizeObserver → debounced fit + pty.resize. Triggered by both
+  // window resize and Grove resize-handle drags (which mutate parent dims).
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
@@ -69,12 +68,13 @@ export function SessionPanel(props: SessionPanelProps) {
   return (
     <div
       ref={rootRef}
-      className="flex flex-col overflow-hidden rounded-panel border border-edge bg-panel shadow-panel-resting"
+      className={`flex h-full w-full flex-col overflow-hidden rounded-panel border bg-panel ${
+        props.isFocused
+          ? 'shadow-panel-focused'
+          : 'shadow-panel-resting'
+      }`}
       style={{
-        width: props.width ?? 720,
-        height: props.height ?? 480,
-        minWidth: MIN_WIDTH,
-        minHeight: MIN_HEIGHT,
+        borderColor: props.isFocused ? 'var(--border-strong)' : 'var(--border-default)',
       }}
     >
       <SessionHeader
@@ -83,11 +83,12 @@ export function SessionPanel(props: SessionPanelProps) {
         status={session.status}
         onKill={() => void session.kill()}
         onRestart={() => void session.restart()}
+        dragHandleProps={props.dragHandleProps}
       />
       <div
         className="flex-1 overflow-hidden bg-panel"
         style={{ padding: '12px 16px' }}
-        onClick={handleClickViewport}
+        onMouseDown={handleClickViewport}
         role="presentation"
       >
         <div ref={term.containerRef} style={{ width: '100%', height: '100%' }} />

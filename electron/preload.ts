@@ -6,6 +6,11 @@ import {
   type PtyExitEvent,
 } from './ipc-channels';
 
+// Grove can have many concurrent sessions, each with 2-3 listeners on the
+// PTY channels. Default Node EventEmitter cap of 10 trips false alarms in
+// dev with even a few sessions. Lifting to 0 = unlimited.
+ipcRenderer.setMaxListeners(0);
+
 interface PtyCreateOptions {
   cols: number;
   rows: number;
