@@ -73,7 +73,7 @@ export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: Toolb
   return (
     <header
       className="drag-region relative flex flex-shrink-0 items-center justify-between border-b border-edge bg-toolbar px-4 backdrop-blur"
-      style={{ height: 'var(--toolbar-height)', paddingLeft: '88px' }}
+      style={{ height: 'var(--toolbar-height)', paddingLeft: '88px', zIndex: 60 }}
     >
       <div className="flex items-center gap-3">
         <span className="font-terminal text-lg font-semibold text-accent">{'>_'}</span>
@@ -124,6 +124,7 @@ export function Toolbar({ sessionCount, claudeInstalled, onOpenSettings }: Toolb
                     selected={themePreset === id}
                     onSelect={() => {
                       setTheme(id);
+                      setThemeMenuOpen(false);
                     }}
                   />
                 ))}
