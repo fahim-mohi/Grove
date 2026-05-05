@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { WorkspaceCanvas } from './components/WorkspaceCanvas';
 import { Sidebar } from './components/Sidebar';
 import { NewSessionDialog } from './components/NewSessionDialog';
+import { SettingsModal } from './components/settings/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { ThemeProvider } from './components/ThemeProvider';
 import { useWorkspaceStore } from './store/workspace';
@@ -43,9 +44,11 @@ export function App() {
         e.preventDefault();
         toggleSidebar();
       } else if (e.key === 'd' || e.key === 'D') {
-        // Toggle light ↔ dark (system mode reachable via Settings).
         e.preventDefault();
         setDarkMode(darkMode === 'dark' ? 'light' : 'dark');
+      } else if (e.key === ',') {
+        e.preventDefault();
+        openModal({ type: 'settings' });
       }
     }
     window.addEventListener('keydown', onKey);
@@ -75,6 +78,7 @@ export function App() {
         )}
 
         <NewSessionDialog open={modal?.type === 'newSession'} onClose={closeModal} />
+        <SettingsModal open={modal?.type === 'settings'} onClose={closeModal} />
       </div>
     </ThemeProvider>
   );

@@ -3,6 +3,7 @@ import { useTerminal } from '../hooks/useTerminal';
 import { useSession } from '../hooks/useSession';
 import { SessionHeader } from './SessionHeader';
 import { useWorkspaceStore } from '../store/workspace';
+import { useSettingsStore } from '../store/settings';
 import type { Tag } from '../store/types';
 
 export interface SessionPanelProps {
@@ -24,6 +25,11 @@ const FIT_DEBOUNCE_MS = 50;
 export function SessionPanel(props: SessionPanelProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
+  const terminalFont = useSettingsStore((s) => s.terminalFont);
+  const terminalFontSize = useSettingsStore((s) => s.terminalFontSize);
+  const cursorStyle = useSettingsStore((s) => s.cursorStyle);
+  const cursorBlink = useSettingsStore((s) => s.cursorBlink);
+
   // Subscribe to PTY data BEFORE useSession creates the PTY. The xterm
   // theme is no longer passed in — ThemeProvider applies the active
   // theme to all registered terminals via the registry, so xterm uses
@@ -31,6 +37,10 @@ export function SessionPanel(props: SessionPanelProps) {
   // happens synchronously on mount).
   const term = useTerminal({
     sessionId: props.sessionId,
+    fontFamily: terminalFont,
+    fontSize: terminalFontSize,
+    cursorStyle,
+    cursorBlink,
   });
 
   const session = useSession({
