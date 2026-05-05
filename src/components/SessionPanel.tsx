@@ -3,6 +3,7 @@ import { useTerminal } from '../hooks/useTerminal';
 import { useSession } from '../hooks/useSession';
 import { SessionHeader } from './SessionHeader';
 import { xtermClaudeLight } from '../themes/xterm-claude';
+import { useWorkspaceStore } from '../store/workspace';
 
 export interface SessionPanelProps {
   sessionId: string;
@@ -11,6 +12,7 @@ export interface SessionPanelProps {
   cwd?: string;
   command?: string;
   isFocused?: boolean;
+  isFullscreen?: boolean;
   // Drag handle props from @dnd-kit's useDraggable. When provided, the
   // SessionHeader becomes the drag handle.
   dragHandleProps?: HTMLAttributes<HTMLElement>;
@@ -18,13 +20,10 @@ export interface SessionPanelProps {
 
 const FIT_DEBOUNCE_MS = 50;
 
-// Single Grove session: PTY + xterm + chrome. Outer dimensions are
-// controlled by the parent wrapper (DraggableSessionWrapper inside
-// WorkspaceCanvas) so this component fills 100% w/h and trusts the
-// ResizeObserver to drive xterm refits.
 export function SessionPanel(props: SessionPanelProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
+  // Subscribe to PTY data BEFORE useSession creates the PTY.
   const term = useTerminal({
     sessionId: props.sessionId,
     theme: xtermClaudeLight,
@@ -38,8 +37,12 @@ export function SessionPanel(props: SessionPanelProps) {
     initialRows: 30,
   });
 
-  // ResizeObserver → debounced fit + pty.resize. Triggered by both
-  // window resize and Grove resize-handle drags (which mutate parent dims).
+  const renameSession = useWorkspaceStore((s) => s.renameSession);
+  const recolorSession = useWorkspaceStore((s) => s.recolorSession);
+  const removeSession = useWorkspaceStore((s) => s.removeSession);
+  const toggleFullscreen = useWorkspaceStore((s) => s.toggleFullscreen);
+
+  // ResizeObserver → debounced fit + pty.resize.
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
@@ -65,24 +68,33 @@ export function SessionPanel(props: SessionPanelProps) {
     term.focus();
   }
 
+  async function handleKill(): Promise<void> {
+    await session.kill();
+    removeSession(props.sessionId);
+  }
+
   return (
     <div
       ref={rootRef}
       className={`flex h-full w-full flex-col overflow-hidden rounded-panel border bg-panel ${
-        props.isFocused
-          ? 'shadow-panel-focused'
-          : 'shadow-panel-resting'
+        props.isFocused ? 'shadow-panel-focused' : 'shadow-panel-resting'
       }`}
       style={{
         borderColor: props.isFocused ? 'var(--border-strong)' : 'var(--border-default)',
       }}
     >
       <SessionHeader
+        sessionId={props.sessionId}
         name={props.name}
         color={props.color}
         status={session.status}
-        onKill={() => void session.kill()}
+        isFullscreen={props.isFullscreen}
+        confirmKill={false}
+        onRename={(next) => renameSession(props.sessionId, next)}
+        onRecolor={(next) => recolorSession(props.sessionId, next)}
+        onKill={handleKill}
         onRestart={() => void session.restart()}
+        onToggleFullscreen={() => toggleFullscreen(props.sessionId)}
         dragHandleProps={props.dragHandleProps}
       />
       <div

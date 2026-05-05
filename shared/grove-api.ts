@@ -35,6 +35,17 @@ export interface SystemVersions {
   grove: string;
 }
 
+export interface ConfirmOptions {
+  title: string;
+  message: string;
+  detail?: string;
+  // When true, the destructive button is highlighted in red and the
+  // default focus is on Cancel. Used for kill / delete flows.
+  danger?: boolean;
+  okLabel?: string;
+  cancelLabel?: string;
+}
+
 // The shape of window.grove. Both preload.ts and the renderer's
 // vite-env.d.ts reference this — drift between the two is a type error.
 export interface GroveApi {
@@ -50,5 +61,8 @@ export interface GroveApi {
     versions: () => SystemVersions;
     platform: () => NodeJS.Platform;
     isClaudeInstalled: () => Promise<boolean>;
+  };
+  dialog: {
+    confirm: (opts: ConfirmOptions) => Promise<boolean>;
   };
 }

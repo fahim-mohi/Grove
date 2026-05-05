@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import { join } from 'node:path';
 import { PtyManager } from './pty-manager';
 import {
@@ -8,6 +8,7 @@ import {
   type PtyResizePayload,
   type PtyWritePayload,
 } from './ipc-channels';
+import type { ConfirmOptions } from '../shared/grove-api';
 
 const PRELOAD_PATH = join(__dirname, '../preload/index.js');
 const RENDERER_DEV_URL = process.env['ELECTRON_RENDERER_URL'];
@@ -83,6 +84,23 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.SYSTEM_IS_CLAUDE_INSTALLED, () => {
     return ptyManager.isClaudeInstalled();
+  });
+
+  ipcMain.handle(IpcChannel.DIALOG_CONFIRM, async (_event, opts: ConfirmOptions) => {
+    const parent = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+    const okLabel = opts.okLabel ?? (opts.danger ? 'Confirm' : 'OK');
+    const cancelLabel = opts.cancelLabel ?? 'Cancel';
+    const result = await dialog.showMessageBox(parent ?? new BrowserWindow({ show: false }), {
+      type: opts.danger ? 'warning' : 'question',
+      title: opts.title,
+      message: opts.message,
+      detail: opts.detail,
+      buttons: [okLabel, cancelLabel],
+      defaultId: opts.danger ? 1 : 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    return result.response === 0;
   });
 
   ptyManager.on('data', (sessionId, data) => {

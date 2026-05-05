@@ -21,6 +21,7 @@ export interface WorkspaceState {
 
   focusedSessionId: string | null;
   draggingSessionId: string | null;
+  fullscreenSessionId: string | null;
 
   // Actions
   addSession: (input: NewSessionInput) => string;
@@ -32,6 +33,8 @@ export interface WorkspaceState {
   focusSession: (id: string | null) => void;
   bringToFront: (id: string) => void;
   setDragging: (id: string | null) => void;
+  toggleFullscreen: (id: string) => void;
+  exitFullscreen: () => void;
 
   // Selectors (functions returning derived data — read with shallow if needed)
   getSortedSessions: () => Session[];
@@ -42,6 +45,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   sessionOrder: [],
   focusedSessionId: null,
   draggingSessionId: null,
+  fullscreenSessionId: null,
 
   addSession(input) {
     const id = nanoid();
@@ -144,6 +148,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setDragging(id) {
     set({ draggingSessionId: id });
+  },
+
+  toggleFullscreen(id) {
+    set((state) => ({
+      fullscreenSessionId: state.fullscreenSessionId === id ? null : id,
+      focusedSessionId: state.fullscreenSessionId === id ? state.focusedSessionId : id,
+    }));
+  },
+
+  exitFullscreen() {
+    set({ fullscreenSessionId: null });
   },
 
   getSortedSessions() {

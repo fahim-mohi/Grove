@@ -10,6 +10,7 @@ export const IpcChannel = {
   PTY_DATA: 'pty:data',
   PTY_EXIT: 'pty:exit',
   SYSTEM_IS_CLAUDE_INSTALLED: 'system:is-claude-installed',
+  DIALOG_CONFIRM: 'dialog:confirm',
 } as const;
 
 export type IpcChannel = (typeof IpcChannel)[keyof typeof IpcChannel];

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -30,10 +30,12 @@ export function WorkspaceCanvas() {
   const sessionsMap = useWorkspaceStore((s) => s.sessions);
   const draggingId = useWorkspaceStore((s) => s.draggingSessionId);
   const focusedId = useWorkspaceStore((s) => s.focusedSessionId);
+  const fullscreenId = useWorkspaceStore((s) => s.fullscreenSessionId);
   const moveSession = useWorkspaceStore((s) => s.moveSession);
   const setDragging = useWorkspaceStore((s) => s.setDragging);
   const bringToFront = useWorkspaceStore((s) => s.bringToFront);
   const focusSession = useWorkspaceStore((s) => s.focusSession);
+  const exitFullscreen = useWorkspaceStore((s) => s.exitFullscreen);
 
   const sortedSessions = useMemo(
     () => sessionOrder.map((id) => sessionsMap[id]).filter((s): s is Session => Boolean(s)),
@@ -41,6 +43,20 @@ export function WorkspaceCanvas() {
   );
 
   const draggingSession = draggingId ? sessionsMap[draggingId] : null;
+  const fullscreenSession = fullscreenId ? sessionsMap[fullscreenId] : null;
+
+  // Esc exits fullscreen.
+  useEffect(() => {
+    if (!fullscreenId) return;
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        exitFullscreen();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreenId, exitFullscreen]);
 
   // Tighter activation distance — feels responsive without false-positives
   // when the user clicks-not-drags on the header.
@@ -78,6 +94,37 @@ export function WorkspaceCanvas() {
     if (e.target === e.currentTarget) {
       focusSession(null);
     }
+  }
+
+  // Fullscreen short-circuit: render only the focused panel filling the
+  // whole canvas. Other sessions stay mounted (xterm doesn't unmount) by
+  // keeping them in the DOM but display:none'd. Esc to exit.
+  if (fullscreenSession) {
+    return (
+      <div className="relative h-full w-full overflow-hidden bg-canvas">
+        {sortedSessions.map((session) => (
+          <div
+            key={session.id}
+            className="absolute"
+            style={{
+              inset: 16,
+              display: session.id === fullscreenSession.id ? 'block' : 'none',
+              zIndex: Z_PANEL_FOCUSED,
+            }}
+          >
+            <SessionPanel
+              sessionId={session.id}
+              name={session.name}
+              color={session.color}
+              cwd={session.cwd}
+              command={session.command}
+              isFocused
+              isFullscreen
+            />
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (

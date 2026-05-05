@@ -5,6 +5,7 @@ import {
   type PtyDataEvent,
   type PtyExitEvent,
 } from './ipc-channels';
+import type { ConfirmOptions } from '../shared/grove-api';
 
 // Grove can have many concurrent sessions, each with 2-3 listeners on the
 // PTY channels. Default Node EventEmitter cap of 10 trips false alarms in
@@ -55,6 +56,11 @@ const groveApi = {
     platform: () => process.platform,
     isClaudeInstalled(): Promise<boolean> {
       return ipcRenderer.invoke(IpcChannel.SYSTEM_IS_CLAUDE_INSTALLED);
+    },
+  },
+  dialog: {
+    confirm(opts: ConfirmOptions): Promise<boolean> {
+      return ipcRenderer.invoke(IpcChannel.DIALOG_CONFIRM, opts);
     },
   },
 } as const;
