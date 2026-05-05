@@ -71,4 +71,7 @@ export interface GroveApi {
     setMany: (patch: Record<string, unknown>) => Promise<void>;
     reset: () => Promise<void>;
   };
+  menu: {
+    onAction: (handler: (action: string) => void) => () => void;
+  };
 }

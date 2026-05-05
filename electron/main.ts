@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import { join } from 'node:path';
 import { PtyManager } from './pty-manager';
 import {
@@ -195,6 +195,136 @@ function registerIpcHandlers(): void {
   });
 }
 
+function buildMenu(): Menu {
+  const sendAction = (action: string): void => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(IpcChannel.MENU_ACTION, action);
+  };
+
+  const isMac = process.platform === 'darwin';
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? ([
+          {
+            label: 'Grove',
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              {
+                label: 'Settings…',
+                accelerator: 'CmdOrCtrl+,',
+                click: () => sendAction('open-settings'),
+              },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const },
+            ],
+          },
+        ] as Electron.MenuItemConstructorOptions[])
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Session',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => sendAction('new-session'),
+        },
+        {
+          label: 'Close Session',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => sendAction('close-session'),
+        },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' as const },
+        { role: 'redo' as const },
+        { type: 'separator' as const },
+        { role: 'cut' as const },
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        { role: 'selectAll' as const },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Toggle Sidebar',
+          accelerator: 'CmdOrCtrl+\\',
+          click: () => sendAction('toggle-sidebar'),
+        },
+        {
+          label: 'Toggle Dark Mode',
+          accelerator: 'CmdOrCtrl+D',
+          click: () => sendAction('toggle-dark'),
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Fit All Panels',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => sendAction('fit-all'),
+        },
+        {
+          label: 'Reset Zoom',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => sendAction('reset-zoom'),
+        },
+        {
+          label: 'Zoom In',
+          accelerator: 'CmdOrCtrl+=',
+          click: () => sendAction('zoom-in'),
+        },
+        {
+          label: 'Zoom Out',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => sendAction('zoom-out'),
+        },
+        { type: 'separator' as const },
+        { role: 'reload' as const },
+        { role: 'forceReload' as const },
+        { role: 'toggleDevTools' as const },
+        { type: 'separator' as const },
+        { role: 'togglefullscreen' as const },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' as const },
+        { role: 'zoom' as const },
+        ...(isMac
+          ? ([
+              { type: 'separator' as const },
+              { role: 'front' as const },
+              { type: 'separator' as const },
+              { role: 'window' as const },
+            ] as Electron.MenuItemConstructorOptions[])
+          : ([{ role: 'close' as const }] as Electron.MenuItemConstructorOptions[])),
+      ],
+    },
+    {
+      role: 'help' as const,
+      submenu: [
+        {
+          label: 'Grove on GitHub',
+          click: () => shell.openExternal('https://github.com/fahim-mohi/Grove'),
+        },
+      ],
+    },
+  ];
+
+  return Menu.buildFromTemplate(template);
+}
+
 app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
     app.setAboutPanelOptions({
@@ -205,6 +335,8 @@ app.whenReady().then(async () => {
   }
 
   nativeTheme.themeSource = 'system';
+
+  Menu.setApplicationMenu(buildMenu());
 
   registerIpcHandlers();
   await createMainWindow();

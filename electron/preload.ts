@@ -77,6 +77,13 @@ const groveApi = {
       return ipcRenderer.invoke(IpcChannel.STORE_RESET);
     },
   },
+  menu: {
+    onAction(handler: (action: string) => void): () => void {
+      const listener = (_e: IpcRendererEvent, action: string) => handler(action);
+      ipcRenderer.on(IpcChannel.MENU_ACTION, listener);
+      return () => ipcRenderer.removeListener(IpcChannel.MENU_ACTION, listener);
+    },
+  },
 } as const;
 
 export type GroveApi = typeof groveApi;

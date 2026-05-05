@@ -15,6 +15,7 @@ export const IpcChannel = {
   STORE_GET_ALL: 'store:get-all',
   STORE_SET: 'store:set',
   STORE_RESET: 'store:reset',
+  MENU_ACTION: 'menu:action',
 } as const;
 
 export type IpcChannel = (typeof IpcChannel)[keyof typeof IpcChannel];

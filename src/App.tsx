@@ -7,6 +7,7 @@ import { Toolbar } from './components/Toolbar';
 import { ThemeProvider } from './components/ThemeProvider';
 import { useWorkspaceStore } from './store/workspace';
 import { useSettingsStore } from './store/settings';
+import { useShortcuts } from './hooks/useShortcuts';
 
 interface Versions {
   electron: string;
@@ -33,6 +34,51 @@ export function App() {
     setVersions(window.grove.system.versions());
     void window.grove.system.isClaudeInstalled().then(setClaudeInstalled);
   }, []);
+
+  useShortcuts();
+
+  // Native menu bar actions arrive via IPC. They mirror the keyboard
+  // shortcuts but originate from the macOS menu bar; both paths land in
+  // the same store actions.
+  useEffect(() => {
+    const unsub = window.grove.menu.onAction((action) => {
+      switch (action) {
+        case 'new-session':
+          openModal({ type: 'newSession' });
+          break;
+        case 'open-settings':
+          openModal({ type: 'settings' });
+          break;
+        case 'close-session': {
+          const state = useWorkspaceStore.getState();
+          const id = state.focusedSessionId;
+          if (id) {
+            void window.grove.pty.kill(id).then(() => state.removeSession(id));
+          }
+          break;
+        }
+        case 'toggle-sidebar':
+          toggleSidebar();
+          break;
+        case 'toggle-dark':
+          setDarkMode(useSettingsStore.getState().darkMode === 'dark' ? 'light' : 'dark');
+          break;
+        case 'fit-all':
+          fitAllToBounds({ width: window.innerWidth, height: window.innerHeight });
+          break;
+        case 'reset-zoom':
+          resetCanvas();
+          break;
+        case 'zoom-in':
+          zoomCanvasAt(window.innerWidth / 2, window.innerHeight / 2, 1.1);
+          break;
+        case 'zoom-out':
+          zoomCanvasAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.1);
+          break;
+      }
+    });
+    return unsub;
+  }, [openModal, toggleSidebar, setDarkMode, fitAllToBounds, resetCanvas, zoomCanvasAt]);
 
   // Phase 5 + Phase 7 keyboard shortcuts. Phase 11 introduces the full set.
   useEffect(() => {

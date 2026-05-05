@@ -29,10 +29,10 @@ const MAX_INLINE_TAGS = 2;
 
 export function SessionHeader(props: SessionHeaderProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [renameTrigger, setRenameTrigger] = useState(0);
   const colorButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  // Close color picker if escape is pressed (also handled by ColorPicker
-  // itself, but redundancy is fine).
+  // Close color picker if escape is pressed.
   useEffect(() => {
     if (!colorPickerOpen) return;
     function onKey(e: KeyboardEvent): void {
@@ -41,6 +41,19 @@ export function SessionHeader(props: SessionHeaderProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [colorPickerOpen]);
+
+  // F2 rename trigger from useShortcuts — fires a custom event scoped to
+  // the focused session id. Each header listens for its own.
+  useEffect(() => {
+    function onRename(e: Event): void {
+      const detail = (e as CustomEvent<{ sessionId: string }>).detail;
+      if (detail?.sessionId === props.sessionId) {
+        setRenameTrigger((n) => n + 1);
+      }
+    }
+    window.addEventListener('grove:rename-session', onRename);
+    return () => window.removeEventListener('grove:rename-session', onRename);
+  }, [props.sessionId]);
 
   async function handleKillClick(): Promise<void> {
     if (props.confirmKill) {
@@ -116,11 +129,11 @@ export function SessionHeader(props: SessionHeaderProps) {
         onPointerDown={(e) => e.stopPropagation()}
         className="relative z-10 min-w-0 flex-shrink"
       >
-        <InlineRename
+        <InlineRenameWithF2
+          key={renameTrigger}
           value={props.name}
           onCommit={props.onRename}
-          className="block min-w-0 truncate font-ui text-[13px] font-medium text-text-primary"
-          inputClassName="block w-full min-w-0 max-w-[240px] rounded-control border border-edge bg-input px-1 py-0 font-ui text-[13px] font-medium text-text-primary outline-none"
+          shouldStartEditing={renameTrigger > 0}
         />
       </div>
 
@@ -184,6 +197,33 @@ function ControlButton({
     >
       {children}
     </button>
+  );
+}
+
+// Bridges F2 trigger from useShortcuts into InlineRename's controlled
+// `editing` prop. Re-keyed per F2 press so each invocation enters edit
+// fresh. While not editing, renders the same className treatment as the
+// inline-text path.
+function InlineRenameWithF2({
+  value,
+  onCommit,
+  shouldStartEditing,
+}: {
+  value: string;
+  onCommit: (next: string) => void;
+  shouldStartEditing: boolean;
+}) {
+  const [editing, setEditing] = useState(shouldStartEditing);
+
+  return (
+    <InlineRename
+      value={value}
+      onCommit={onCommit}
+      editing={editing}
+      onEditingChange={setEditing}
+      className="block min-w-0 truncate font-ui text-[13px] font-medium text-text-primary"
+      inputClassName="block w-full min-w-0 max-w-[240px] rounded-control border border-edge bg-input px-1 py-0 font-ui text-[13px] font-medium text-text-primary outline-none"
+    />
   );
 }
 
