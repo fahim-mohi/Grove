@@ -17,5 +17,5 @@
     "resolveJsonModule": true,
     "useDefineForClassFields": true
   },
-  "include": ["src/**/*", "index.html"]
+  "include": ["src/**/*", "shared/**/*", "index.html"]
 }

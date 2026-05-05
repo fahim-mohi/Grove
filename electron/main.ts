@@ -1,5 +1,13 @@
-import { app, BrowserWindow, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
 import { join } from 'node:path';
+import { PtyManager } from './pty-manager';
+import {
+  IpcChannel,
+  type PtyCreateRequest,
+  type PtyKillRequest,
+  type PtyResizePayload,
+  type PtyWritePayload,
+} from './ipc-channels';
 
 const PRELOAD_PATH = join(__dirname, '../preload/index.js');
 const RENDERER_DEV_URL = process.env['ELECTRON_RENDERER_URL'];
@@ -7,6 +15,7 @@ const RENDERER_PROD_HTML = join(__dirname, '../renderer/index.html');
 const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
+const ptyManager = new PtyManager();
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -32,6 +41,10 @@ function createMainWindow(): void {
     mainWindow?.show();
   });
 
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -45,6 +58,44 @@ function createMainWindow(): void {
   }
 }
 
+function registerIpcHandlers(): void {
+  ipcMain.handle(IpcChannel.PTY_CREATE, (_event, payload: PtyCreateRequest) => {
+    return ptyManager.create(payload.sessionId, {
+      cols: payload.cols,
+      rows: payload.rows,
+      cwd: payload.cwd,
+      command: payload.command,
+    });
+  });
+
+  ipcMain.on(IpcChannel.PTY_WRITE, (_event, payload: PtyWritePayload) => {
+    ptyManager.write(payload.sessionId, payload.data);
+  });
+
+  ipcMain.on(IpcChannel.PTY_RESIZE, (_event, payload: PtyResizePayload) => {
+    ptyManager.resize(payload.sessionId, payload.cols, payload.rows);
+  });
+
+  ipcMain.handle(IpcChannel.PTY_KILL, (_event, payload: PtyKillRequest) => {
+    ptyManager.kill(payload.sessionId);
+    return { ok: true };
+  });
+
+  ipcMain.handle(IpcChannel.SYSTEM_IS_CLAUDE_INSTALLED, () => {
+    return ptyManager.isClaudeInstalled();
+  });
+
+  ptyManager.on('data', (sessionId, data) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(IpcChannel.PTY_DATA, { sessionId, data });
+  });
+
+  ptyManager.on('exit', (sessionId, code) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(IpcChannel.PTY_EXIT, { sessionId, code });
+  });
+}
+
 app.whenReady().then(() => {
   if (process.platform === 'darwin') {
     app.setAboutPanelOptions({
@@ -56,11 +107,16 @@ app.whenReady().then(() => {
 
   nativeTheme.themeSource = 'system';
 
+  registerIpcHandlers();
   createMainWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
+});
+
+app.on('before-quit', () => {
+  ptyManager.killAll();
 });
 
 app.on('window-all-closed', () => {

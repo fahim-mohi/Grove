@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { GroveApi } from '../electron/preload';
+import type { GroveApi } from '../shared/grove-api';
 
 declare global {
   interface Window {
