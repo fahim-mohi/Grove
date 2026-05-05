@@ -207,3 +207,15 @@ textarea,
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/* xterm.js — ensure the terminal fills its container exactly. xterm
+   appends a .terminal.xterm element inside the ref'd div; we need that
+   inner element to take 100% w/h so FitAddon measures correctly. */
+.xterm {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+}
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+}
