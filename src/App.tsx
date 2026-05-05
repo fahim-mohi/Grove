@@ -4,6 +4,8 @@ import { Sidebar } from './components/Sidebar';
 import { NewSessionDialog } from './components/NewSessionDialog';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { Toolbar } from './components/Toolbar';
+import { HandoffToast } from './components/HandoffToast';
+import { TmuxMissingBanner } from './components/TmuxMissingBanner';
 import { ThemeProvider } from './components/ThemeProvider';
 import { useWorkspaceStore } from './store/workspace';
 import { useSettingsStore } from './store/settings';
@@ -32,6 +34,8 @@ export function App() {
   const fitAllToBounds = useWorkspaceStore((s) => s.fitAllToBounds);
 
   const [saveError, setSaveError] = useState<string | null>(null);
+  const setTmuxAvailable = useWorkspaceStore((s) => s.setTmuxAvailable);
+  const setExternalTmuxSessions = useWorkspaceStore((s) => s.setExternalTmuxSessions);
 
   useEffect(() => {
     setVersions(window.grove.system.versions());
@@ -40,6 +44,39 @@ export function App() {
       setSaveError(message);
     });
   }, []);
+
+  // Detect tmux + poll external sessions every 5s. The list excludes
+  // tmux sessions that Grove panels are currently attached to (those
+  // already render as panels).
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | null = null;
+
+    async function refresh(): Promise<void> {
+      const ok = await window.grove.tmux.isAvailable();
+      if (cancelled) return;
+      setTmuxAvailable(ok);
+      if (!ok) {
+        setExternalTmuxSessions([]);
+        return;
+      }
+      const all = await window.grove.tmux.listSessions();
+      if (cancelled) return;
+      const groveTmuxNames = new Set(
+        Object.values(useWorkspaceStore.getState().sessions)
+          .filter((s) => s.kind === 'tmux' && s.attached !== false && s.tmuxName)
+          .map((s) => s.tmuxName!),
+      );
+      setExternalTmuxSessions(all.filter((s) => !groveTmuxNames.has(s.name)));
+    }
+
+    void refresh();
+    timer = window.setInterval(() => void refresh(), 5000);
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearInterval(timer);
+    };
+  }, [setTmuxAvailable, setExternalTmuxSessions]);
 
   useShortcuts();
 
@@ -133,6 +170,8 @@ export function App() {
           onOpenSettings={() => openModal({ type: 'settings' })}
         />
 
+        <TmuxMissingBanner />
+
         <div className="no-drag flex flex-1 overflow-hidden">
           <Sidebar onOpenNewSession={() => openModal({ type: 'newSession' })} />
           <main className="flex-1 overflow-hidden">
@@ -148,6 +187,7 @@ export function App() {
 
         <NewSessionDialog open={modal?.type === 'newSession'} onClose={closeModal} />
         <SettingsModal open={modal?.type === 'settings'} onClose={closeModal} />
+        <HandoffToast />
 
         {saveError && (
           <div

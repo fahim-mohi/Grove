@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { CanvasTransform, NewSessionInput, Session, Size, Tag, Vec2 } from './types';
+import type { TmuxSessionInfo } from '../../shared/grove-api';
 
 // Phase 3 subset of the full DESIGN.md §10.1 workspace store.
 // Adds: sessions/order/focus/drag state + the 7 actions the canvas needs.
@@ -38,6 +39,11 @@ export interface WorkspaceState {
   modal: ModalState;
   canvasTransform: CanvasTransform;
 
+  // Tmux integration runtime state
+  tmuxAvailable: boolean;
+  externalTmuxSessions: TmuxSessionInfo[]; // tmux sessions running outside Grove right now
+  lastDetachedTmux: { tmuxName: string; sessionName: string; at: number } | null;
+
   // Session actions
   addSession: (input: NewSessionInput) => string;
   removeSession: (id: string) => void;
@@ -55,6 +61,13 @@ export interface WorkspaceState {
   setSearchQuery: (q: string) => void;
   openModal: (modal: ModalState) => void;
   closeModal: () => void;
+
+  // Tmux runtime actions
+  setTmuxAvailable: (v: boolean) => void;
+  setExternalTmuxSessions: (sessions: TmuxSessionInfo[]) => void;
+  setSessionAttached: (id: string, attached: boolean) => void;
+  noteDetached: (info: { tmuxName: string; sessionName: string }) => void;
+  clearDetachedNotice: () => void;
 
   // Canvas transform actions
   setCanvasTransform: (next: Partial<CanvasTransform>) => void;
@@ -90,6 +103,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   searchQuery: '',
   modal: null,
   canvasTransform: { x: 0, y: 0, scale: 1 },
+  tmuxAvailable: false,
+  externalTmuxSessions: [],
+  lastDetachedTmux: null,
 
   addSession(input) {
     const id = nanoid();
@@ -115,6 +131,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       command: input.command,
       createdAt: now,
       isMinimized: false,
+      kind: input.kind ?? 'local',
+      tmuxName: input.tmuxName,
+      attached: true,
     };
 
     set((state) => ({
@@ -234,6 +253,30 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   closeModal() {
     set({ modal: null });
+  },
+
+  setTmuxAvailable(v) {
+    set({ tmuxAvailable: v });
+  },
+
+  setExternalTmuxSessions(sessions) {
+    set({ externalTmuxSessions: sessions });
+  },
+
+  setSessionAttached(id, attached) {
+    set((state) => {
+      const session = state.sessions[id];
+      if (!session) return state;
+      return { sessions: { ...state.sessions, [id]: { ...session, attached } } };
+    });
+  },
+
+  noteDetached(info) {
+    set({ lastDetachedTmux: { ...info, at: Date.now() } });
+  },
+
+  clearDetachedNotice() {
+    set({ lastDetachedTmux: null });
   },
 
   setCanvasTransform(next) {

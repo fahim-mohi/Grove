@@ -5,7 +5,7 @@ import {
   type PtyDataEvent,
   type PtyExitEvent,
 } from './ipc-channels';
-import type { ConfirmOptions } from '../shared/grove-api';
+import type { ConfirmOptions, TmuxSessionInfo } from '../shared/grove-api';
 
 // Grove can have many concurrent sessions, each with 2-3 listeners on the
 // PTY channels. Default Node EventEmitter cap of 10 trips false alarms in
@@ -82,6 +82,35 @@ const groveApi = {
       const listener = (_e: IpcRendererEvent, action: string) => handler(action);
       ipcRenderer.on(IpcChannel.MENU_ACTION, listener);
       return () => ipcRenderer.removeListener(IpcChannel.MENU_ACTION, listener);
+    },
+  },
+  tmux: {
+    isAvailable(): Promise<boolean> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_AVAILABLE);
+    },
+    listSessions(): Promise<TmuxSessionInfo[]> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_LIST_SESSIONS);
+    },
+    hasSession(name: string): Promise<boolean> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_HAS_SESSION, name);
+    },
+    killSession(name: string): Promise<void> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_KILL_SESSION, name);
+    },
+    createAndAttach(
+      sessionId: string,
+      opts: { tmuxName: string; command: string; cols: number; rows: number; cwd?: string },
+    ): Promise<PtyCreateResponse> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_CREATE_AND_ATTACH, { sessionId, ...opts });
+    },
+    attach(
+      sessionId: string,
+      opts: { tmuxName: string; cols: number; rows: number },
+    ): Promise<PtyCreateResponse> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_ATTACH, { sessionId, ...opts });
+    },
+    detach(sessionId: string): Promise<{ ok: boolean }> {
+      return ipcRenderer.invoke(IpcChannel.TMUX_DETACH, { sessionId });
     },
   },
 } as const;

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import { join } from 'node:path';
 import { PtyManager } from './pty-manager';
+import { TmuxManager } from './tmux-manager';
 import {
   IpcChannel,
   type PtyCreateRequest,
@@ -19,6 +20,7 @@ const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
 const ptyManager = new PtyManager();
+const tmuxManager = new TmuxManager();
 let isQuitting = false;
 let windowStateSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -146,6 +148,99 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.STORE_RESET, async () => {
     await storeManager.reset();
+  });
+
+  // ── tmux ────────────────────────────────────────────────────────
+  ipcMain.handle(IpcChannel.TMUX_AVAILABLE, () => {
+    tmuxManager.refresh();
+    return tmuxManager.isAvailable();
+  });
+
+  ipcMain.handle(IpcChannel.TMUX_LIST_SESSIONS, async () => {
+    return await tmuxManager.listSessions();
+  });
+
+  ipcMain.handle(IpcChannel.TMUX_HAS_SESSION, async (_e, name: string) => {
+    return await tmuxManager.hasSession(name);
+  });
+
+  ipcMain.handle(IpcChannel.TMUX_KILL_SESSION, async (_e, name: string) => {
+    await tmuxManager.killSession(name);
+  });
+
+  ipcMain.handle(
+    IpcChannel.TMUX_CREATE_AND_ATTACH,
+    async (
+      _e,
+      payload: {
+        sessionId: string;
+        tmuxName: string;
+        command: string;
+        cols: number;
+        rows: number;
+        cwd?: string;
+      },
+    ) => {
+      if (!tmuxManager.isAvailable()) {
+        return {
+          ok: false as const,
+          reason: 'spawn-failed' as const,
+          error: 'tmux is not installed. Sessions will use a local PTY instead.',
+        };
+      }
+      try {
+        await tmuxManager.createSession(payload.tmuxName, payload.command, payload.cwd);
+      } catch (err) {
+        return {
+          ok: false as const,
+          reason: 'spawn-failed' as const,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+      const argv = tmuxManager.buildAttachArgv(payload.tmuxName);
+      return ptyManager.create(payload.sessionId, {
+        cols: payload.cols,
+        rows: payload.rows,
+        cwd: payload.cwd,
+        argv,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.TMUX_ATTACH,
+    async (
+      _e,
+      payload: { sessionId: string; tmuxName: string; cols: number; rows: number },
+    ) => {
+      if (!tmuxManager.isAvailable()) {
+        return {
+          ok: false as const,
+          reason: 'spawn-failed' as const,
+          error: 'tmux not available',
+        };
+      }
+      if (!(await tmuxManager.hasSession(payload.tmuxName))) {
+        return {
+          ok: false as const,
+          reason: 'spawn-failed' as const,
+          error: `tmux session ${payload.tmuxName} no longer exists`,
+        };
+      }
+      const argv = tmuxManager.buildAttachArgv(payload.tmuxName);
+      return ptyManager.create(payload.sessionId, {
+        cols: payload.cols,
+        rows: payload.rows,
+        argv,
+      });
+    },
+  );
+
+  ipcMain.handle(IpcChannel.TMUX_DETACH, (_e, payload: { sessionId: string }) => {
+    // Just kill the local attach PTY. The tmux server keeps the session
+    // running; user can re-attach from any terminal.
+    ptyManager.kill(payload.sessionId);
+    return { ok: true };
   });
 
   ipcMain.handle(

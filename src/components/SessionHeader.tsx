@@ -13,9 +13,12 @@ export interface SessionHeaderProps {
   tags?: Tag[];
   isFullscreen?: boolean;
   confirmKill?: boolean;
+  kind?: 'local' | 'tmux';
+  tmuxName?: string;
   onRename: (next: string) => void;
   onRecolor: (next: string) => void;
   onKill: () => void | Promise<void>;
+  onDetach?: () => void | Promise<void>;
   onRestart?: () => void;
   onSettings?: () => void;
   onToggleFullscreen?: () => void;
@@ -169,7 +172,26 @@ export function SessionHeader(props: SessionHeaderProps) {
         </ControlButton>
       )}
 
-      <ControlButton aria-label="Kill session" onClick={() => void handleKillClick()} hover="danger">
+      {props.onDetach && props.kind === 'tmux' && (
+        <ControlButton
+          aria-label="Detach from Grove (keep running in tmux)"
+          title={`Detach — keeps the session running. Re-attach later with: tmux attach -t ${props.tmuxName ?? ''}`}
+          onClick={() => void props.onDetach!()}
+        >
+          <DetachIcon />
+        </ControlButton>
+      )}
+
+      <ControlButton
+        aria-label={props.kind === 'tmux' ? 'Kill tmux session' : 'Kill session'}
+        title={
+          props.kind === 'tmux'
+            ? 'Kill — destroys the underlying tmux session'
+            : 'Kill session'
+        }
+        onClick={() => void handleKillClick()}
+        hover="danger"
+      >
         <CloseIcon />
       </ControlButton>
     </div>
@@ -271,12 +293,21 @@ function TagsInline({ tags }: { tags: Tag[] }) {
 
 function StatusBadge({ status }: { status: SessionStatus }) {
   if (status.kind === 'running' || status.kind === 'idle') return null;
-  const label =
-    status.kind === 'spawning'
-      ? 'spawning…'
-      : status.kind === 'exited'
-        ? `exited (${status.code})`
-        : `error: ${status.reason}`;
+  let label: string;
+  switch (status.kind) {
+    case 'spawning':
+      label = 'spawning…';
+      break;
+    case 'exited':
+      label = `exited (${status.code})`;
+      break;
+    case 'detached':
+      label = 'detached';
+      break;
+    case 'error':
+      label = `error: ${status.reason}`;
+      break;
+  }
   const color = status.kind === 'error' ? 'text-danger' : 'text-text-muted';
   return <span className={`relative z-10 font-ui text-[11px] ${color}`}>{label}</span>;
 }
@@ -331,6 +362,26 @@ function FullscreenIcon() {
       aria-hidden
     >
       <path d="M3 9V5a2 2 0 0 1 2-2h4M21 9V5a2 2 0 0 0-2-2h-4M3 15v4a2 2 0 0 0 2 2h4M21 15v4a2 2 0 0 1-2 2h-4" />
+    </svg>
+  );
+}
+
+function DetachIcon() {
+  // "Eject" / release glyph — implies the session goes back to "the world"
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 4l-6 8h12z" />
+      <line x1="6" y1="18" x2="18" y2="18" />
     </svg>
   );
 }

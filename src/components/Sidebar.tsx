@@ -12,6 +12,7 @@ import { useWorkspaceStore } from '../store/workspace';
 import { SessionListItem } from './SessionListItem';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { TagBadge } from './TagBadge';
+import { ExternalSessionItem } from './ExternalSessionItem';
 
 interface SidebarProps {
   onOpenNewSession: () => void;
@@ -32,6 +33,9 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
   const tagsMap = useWorkspaceStore((s) => s.tags);
   const filterTagId = useWorkspaceStore((s) => s.filterTagId);
   const setFilterTag = useWorkspaceStore((s) => s.setFilterTag);
+  const externalTmux = useWorkspaceStore((s) => s.externalTmuxSessions);
+  const tmuxAvailable = useWorkspaceStore((s) => s.tmuxAvailable);
+  const addSession = useWorkspaceStore((s) => s.addSession);
 
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
@@ -201,6 +205,39 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
           </DndContext>
         )}
       </div>
+
+      {tmuxAvailable && externalTmux.length > 0 && (
+        <div className="flex flex-shrink-0 flex-col gap-1 border-t border-edge px-2 py-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="font-ui text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+              In tmux
+            </span>
+            <span className="font-terminal text-[10px] text-text-muted">
+              {externalTmux.length}
+            </span>
+          </div>
+          <p className="px-1 pb-1 font-ui text-[10px] text-text-muted">
+            Drag onto canvas to attach
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {externalTmux.map((s) => (
+              <ExternalSessionItem
+                key={s.name}
+                session={s}
+                onClick={() => {
+                  // Click = quick-attach. Same effect as drag-into-canvas.
+                  addSession({
+                    name: s.name.startsWith('grove-') ? s.name.slice(6) : s.name,
+                    color: '#22C55E',
+                    kind: 'tmux',
+                    tmuxName: s.name,
+                  });
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {tagOrder.length > 0 && (
         <div className="flex flex-shrink-0 flex-col gap-1.5 border-t border-edge px-3 py-3">

@@ -74,4 +74,39 @@ export interface GroveApi {
   menu: {
     onAction: (handler: (action: string) => void) => () => void;
   };
+  tmux: {
+    isAvailable: () => Promise<boolean>;
+    listSessions: () => Promise<TmuxSessionInfo[]>;
+    hasSession: (name: string) => Promise<boolean>;
+    killSession: (name: string) => Promise<void>;
+    // Spawn a new tmux session running `command` then attach a Grove
+    // PTY to it. Returns the same shape as pty.create.
+    createAndAttach: (
+      sessionId: string,
+      opts: {
+        tmuxName: string;
+        command: string;
+        cols: number;
+        rows: number;
+        cwd?: string;
+      },
+    ) => Promise<PtyCreateResponse>;
+    // Attach an existing tmux session to a Grove panel.
+    attach: (
+      sessionId: string,
+      opts: { tmuxName: string; cols: number; rows: number },
+    ) => Promise<PtyCreateResponse>;
+    // Kill the local attach PTY without killing the tmux session.
+    // The session keeps running in tmux; user can re-attach from any
+    // terminal via `tmux attach -t <name>`.
+    detach: (sessionId: string) => Promise<{ ok: boolean }>;
+  };
+}
+
+export interface TmuxSessionInfo {
+  name: string;
+  windowCount: number;
+  attached: boolean;
+  createdAt: number;
+  lastActivity: number;
 }

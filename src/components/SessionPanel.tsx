@@ -14,6 +14,9 @@ export interface SessionPanelProps {
   tagIds?: string[];
   cwd?: string;
   command?: string;
+  kind?: 'local' | 'tmux';
+  tmuxName?: string;
+  attachOnly?: boolean;
   isFocused?: boolean;
   isFullscreen?: boolean;
   // Drag handle props from @dnd-kit's useDraggable. When provided, the
@@ -48,6 +51,9 @@ export function SessionPanel(props: SessionPanelProps) {
     sessionId: props.sessionId,
     cwd: props.cwd,
     command: props.command,
+    kind: props.kind,
+    tmuxName: props.tmuxName,
+    attachOnly: props.attachOnly,
     initialCols: 100,
     initialRows: 30,
   });
@@ -57,6 +63,7 @@ export function SessionPanel(props: SessionPanelProps) {
   const removeSession = useWorkspaceStore((s) => s.removeSession);
   const toggleFullscreen = useWorkspaceStore((s) => s.toggleFullscreen);
   const tagsMap = useWorkspaceStore((s) => s.tags);
+  const noteDetached = useWorkspaceStore((s) => s.noteDetached);
 
   const tags = useMemo<Tag[]>(
     () =>
@@ -97,6 +104,14 @@ export function SessionPanel(props: SessionPanelProps) {
     removeSession(props.sessionId);
   }
 
+  async function handleDetach(): Promise<void> {
+    if (props.tmuxName) {
+      noteDetached({ tmuxName: props.tmuxName, sessionName: props.name });
+    }
+    await session.detach();
+    removeSession(props.sessionId);
+  }
+
   return (
     <div
       ref={rootRef}
@@ -115,9 +130,12 @@ export function SessionPanel(props: SessionPanelProps) {
         status={session.status}
         isFullscreen={props.isFullscreen}
         confirmKill={false}
+        kind={props.kind}
+        tmuxName={props.tmuxName}
         onRename={(next) => renameSession(props.sessionId, next)}
         onRecolor={(next) => recolorSession(props.sessionId, next)}
         onKill={handleKill}
+        onDetach={props.kind === 'tmux' ? handleDetach : undefined}
         onRestart={() => void session.restart()}
         onToggleFullscreen={() => toggleFullscreen(props.sessionId)}
         dragHandleProps={props.dragHandleProps}

@@ -15,6 +15,7 @@ export interface SettingsState {
   snapToGrid: boolean;
   gridSize: 4 | 8 | 16;
   customTheme: { name: string; light: Record<string, string>; dark: Record<string, string> } | null;
+  preferTmux: boolean;
 
   // Setters
   setTheme: (preset: ThemePreset) => void;
@@ -30,6 +31,7 @@ export interface SettingsState {
   setSnapToGrid: (v: boolean) => void;
   setGridSize: (s: 4 | 8 | 16) => void;
   setCustomTheme: (theme: SettingsState['customTheme']) => void;
+  setPreferTmux: (v: boolean) => void;
 
   // Hydration helper used by the persistence bridge.
   hydrate: (input: Partial<SettingsState>) => void;
@@ -50,6 +52,7 @@ const DEFAULTS: Omit<
   | 'setSnapToGrid'
   | 'setGridSize'
   | 'setCustomTheme'
+  | 'setPreferTmux'
   | 'hydrate'
 > = {
   themePreset: 'claude',
@@ -65,6 +68,7 @@ const DEFAULTS: Omit<
   snapToGrid: false,
   gridSize: 8,
   customTheme: null,
+  preferTmux: true,
 };
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -82,5 +86,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setSnapToGrid: (snapToGrid) => set({ snapToGrid }),
   setGridSize: (gridSize) => set({ gridSize }),
   setCustomTheme: (customTheme) => set({ customTheme }),
+  setPreferTmux: (preferTmux) => set({ preferTmux }),
   hydrate: (input) => set((state) => ({ ...state, ...input })),
 }));

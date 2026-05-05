@@ -16,6 +16,7 @@ import { PanelChrome } from './PanelChrome';
 import { ResizeHandles } from './ResizeHandles';
 import { EmptyCanvas } from './EmptyCanvas';
 import { MiniMap } from './MiniMap';
+import { TMUX_DRAG_TYPE } from './ExternalSessionItem';
 import type { Session } from '../store/types';
 
 const Z_PANEL_RESTING = 10;
@@ -50,6 +51,8 @@ export function WorkspaceCanvas() {
 
   const setFilterTag = useWorkspaceStore((s) => s.setFilterTag);
   const tagsMap = useWorkspaceStore((s) => s.tags);
+  const addSession = useWorkspaceStore((s) => s.addSession);
+  const [dropActive, setDropActive] = useState(false);
 
   const sortedSessions = useMemo(
     () => sessionOrder.map((id) => sessionsMap[id]).filter((s): s is Session => Boolean(s)),
@@ -172,6 +175,55 @@ export function WorkspaceCanvas() {
     zoomCanvasAt(e.clientX, e.clientY, factor);
   }
 
+  // Native HTML5 drag-and-drop receiver for external tmux sessions
+  // dragged from the Sidebar. The MIME type is set by ExternalSessionItem.
+  function handleDragOver(e: React.DragEvent): void {
+    if (!Array.from(e.dataTransfer.types).includes(TMUX_DRAG_TYPE)) return;
+    e.preventDefault(); // signal we accept the drop
+    e.dataTransfer.dropEffect = 'copy';
+    if (!dropActive) setDropActive(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent): void {
+    if (e.currentTarget === e.target) setDropActive(false);
+  }
+
+  function handleDrop(e: React.DragEvent): void {
+    setDropActive(false);
+    const raw = e.dataTransfer.getData(TMUX_DRAG_TYPE);
+    if (!raw) return;
+    e.preventDefault();
+    let payload: { tmuxName?: string };
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (!payload.tmuxName) return;
+
+    // Convert client (viewport) coords into canvas-space coords by
+    // reversing the canvas transform.
+    const root = containerRef.current;
+    const rect = root?.getBoundingClientRect();
+    const clientX = e.clientX - (rect?.left ?? 0);
+    const clientY = e.clientY - (rect?.top ?? 0);
+    const worldX = (clientX - canvasTransform.x) / canvasTransform.scale;
+    const worldY = (clientY - canvasTransform.y) / canvasTransform.scale;
+
+    const displayName = payload.tmuxName.startsWith('grove-')
+      ? payload.tmuxName.slice(6).replace(/-[a-z0-9]{4}$/, '')
+      : payload.tmuxName;
+
+    addSession({
+      name: displayName,
+      color: '#22C55E', // green = "from outside"; user can recolor
+      kind: 'tmux',
+      tmuxName: payload.tmuxName,
+      // Center the panel on the drop point (default size 720x480).
+      position: { x: worldX - 360, y: worldY - 240 },
+    });
+  }
+
   // Fullscreen short-circuit (no transform).
   if (fullscreenSession) {
     return (
@@ -193,6 +245,9 @@ export function WorkspaceCanvas() {
               tagIds={session.tags}
               cwd={session.cwd}
               command={session.command}
+              kind={session.kind}
+              tmuxName={session.tmuxName}
+              attachOnly={session.attached === false}
               isFocused
               isFullscreen
             />
@@ -218,6 +273,9 @@ export function WorkspaceCanvas() {
         className="relative h-full w-full overflow-hidden bg-canvas"
         onMouseDown={handleCanvasMouseDown}
         onWheel={handleWheel}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         // Auxclick (middle button) doesn't fire onMouseDown reliably in
         // some setups — bind onAuxClick fallback for some macOS mice.
         style={{
@@ -276,6 +334,25 @@ export function WorkspaceCanvas() {
               height: containerRef.current.clientHeight,
             }}
           />
+        )}
+
+        {dropActive && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            style={{
+              zIndex: 41,
+              border: `3px dashed var(--accent)`,
+              background: 'var(--accent-soft)',
+            }}
+          >
+            <div
+              className="rounded-panel border border-edge bg-modal px-5 py-3 font-ui text-[14px] font-semibold text-text-primary shadow-modal"
+              style={{ color: 'var(--accent)' }}
+            >
+              Drop to attach session
+            </div>
+          </div>
         )}
 
         {filteredOutAll && activeFilterTag && (
@@ -381,6 +458,9 @@ function DraggableSessionWrapper({
         tagIds={session.tags}
         cwd={session.cwd}
         command={session.command}
+        kind={session.kind}
+        tmuxName={session.tmuxName}
+        attachOnly={session.attached === false}
         isFocused={isFocused}
         dragHandleProps={{ ...attributes, ...listeners }}
       />

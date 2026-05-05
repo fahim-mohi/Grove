@@ -116,6 +116,7 @@ export async function hydrateStores(): Promise<PersistedState> {
     snapToGrid: persisted.snapToGrid,
     gridSize: persisted.gridSize,
     customTheme: persisted.customTheme,
+    preferTmux: persisted.preferTmux ?? true,
   });
 
   return persisted;
@@ -159,6 +160,7 @@ export function subscribePersistence(): () => void {
     if (state.snapToGrid !== prev.snapToGrid) patch.snapToGrid = state.snapToGrid;
     if (state.gridSize !== prev.gridSize) patch.gridSize = state.gridSize;
     if (state.customTheme !== prev.customTheme) patch.customTheme = state.customTheme;
+    if (state.preferTmux !== prev.preferTmux) patch.preferTmux = state.preferTmux;
     if (Object.keys(patch).length > 0) queueSave(patch);
   });
 

@@ -17,6 +17,10 @@ export interface Size {
   height: number;
 }
 
+// 'local' = traditional fresh PTY spawned by Grove (legacy / tmux-missing path).
+// 'tmux'  = the PTY just runs `tmux attach -t tmuxName`. Detach is non-destructive.
+export type SessionKind = 'local' | 'tmux';
+
 export interface Session {
   id: string;
   name: string;
@@ -29,6 +33,14 @@ export interface Session {
   command?: string;
   createdAt: number;
   isMinimized: boolean;
+  // Tmux-backed when set. The tmux server holds the actual PTY +
+  // claude process; Grove only attaches.
+  kind?: SessionKind;
+  tmuxName?: string;
+  // True while a Grove panel is currently attached to the tmux session.
+  // When false, the session is "out in the wild" — running in tmux,
+  // not visible in any Grove panel.
+  attached?: boolean;
 }
 
 export interface Tag {
@@ -45,6 +57,8 @@ export interface NewSessionInput {
   command?: string;
   position?: Vec2;
   size?: Size;
+  kind?: SessionKind;
+  tmuxName?: string;
 }
 
 export interface CanvasTransform {

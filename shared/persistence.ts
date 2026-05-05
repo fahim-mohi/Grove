@@ -50,6 +50,9 @@ export interface PersistedState {
     light: Record<string, string>;
     dark: Record<string, string>;
   } | null;
+
+  // Tmux integration (Phase 16)
+  preferTmux: boolean;
 }
 
 export function defaultPersistedState(): PersistedState {
@@ -73,6 +76,7 @@ export function defaultPersistedState(): PersistedState {
     autoRestoreSessions: true,
     confirmBeforeKill: false,
     customTheme: null,
+    preferTmux: true,
   };
 }
 

@@ -13,6 +13,10 @@ export interface CreateSessionOpts {
   rows: number;
   cwd?: string;
   command?: string;
+  // Explicit argv for the spawned process. When provided, the manager
+  // skips its claude-resolution path and just spawns this command +
+  // args directly. Used by TmuxManager to spawn `tmux attach -t <name>`.
+  argv?: { command: string; args: string[] };
 }
 
 export type CreateSessionResult =
@@ -83,9 +87,13 @@ export class PtyManager extends EventEmitter<PtyManagerEventMap> {
     }
 
     let command: string;
+    let args: string[] = [];
     let usedFallback = false;
 
-    if (opts.command && opts.command.trim().length > 0) {
+    if (opts.argv) {
+      command = opts.argv.command;
+      args = opts.argv.args;
+    } else if (opts.command && opts.command.trim().length > 0) {
       command = opts.command;
     } else {
       const claude = this.resolveClaudeBinary();
@@ -101,7 +109,7 @@ export class PtyManager extends EventEmitter<PtyManagerEventMap> {
 
     let pty: IPty;
     try {
-      pty = ptySpawn(command, [], {
+      pty = ptySpawn(command, args, {
         name: 'xterm-256color',
         cols: Math.max(1, Math.floor(opts.cols)),
         rows: Math.max(1, Math.floor(opts.rows)),

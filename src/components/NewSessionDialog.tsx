@@ -3,6 +3,8 @@ import { Modal } from './Modal';
 import { ColorPicker, SWATCHES } from './ColorPicker';
 import { TagPickerInline } from './TagPickerInline';
 import { useWorkspaceStore } from '../store/workspace';
+import { useSettingsStore } from '../store/settings';
+import { toTmuxName } from '../lib/tmux-naming';
 
 interface NewSessionDialogProps {
   open: boolean;
@@ -14,6 +16,8 @@ const DEFAULT_NAME_PREFIX = 'session';
 export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
   const addSession = useWorkspaceStore((s) => s.addSession);
   const sessionCount = useWorkspaceStore((s) => s.sessionOrder.length);
+  const tmuxAvailable = useWorkspaceStore((s) => s.tmuxAvailable);
+  const preferTmux = useSettingsStore((s) => s.preferTmux);
 
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(SWATCHES[1] ?? '#F97316'); // orange default
@@ -41,12 +45,15 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
   function handleSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!valid) return;
+    const useTmux = tmuxAvailable && preferTmux;
     addSession({
       name: name.trim(),
       color,
       tags: selectedTagIds,
       cwd: cwd.trim() || undefined,
       command: command.trim() || undefined,
+      kind: useTmux ? 'tmux' : 'local',
+      tmuxName: useTmux ? toTmuxName(name.trim()) : undefined,
     });
     onClose();
   }

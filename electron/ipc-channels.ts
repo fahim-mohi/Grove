@@ -16,6 +16,13 @@ export const IpcChannel = {
   STORE_SET: 'store:set',
   STORE_RESET: 'store:reset',
   MENU_ACTION: 'menu:action',
+  TMUX_AVAILABLE: 'tmux:available',
+  TMUX_LIST_SESSIONS: 'tmux:list-sessions',
+  TMUX_HAS_SESSION: 'tmux:has-session',
+  TMUX_KILL_SESSION: 'tmux:kill-session',
+  TMUX_CREATE_AND_ATTACH: 'tmux:create-and-attach',
+  TMUX_ATTACH: 'tmux:attach',
+  TMUX_DETACH: 'tmux:detach',
 } as const;
 
 export type IpcChannel = (typeof IpcChannel)[keyof typeof IpcChannel];

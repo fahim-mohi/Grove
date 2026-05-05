@@ -8,6 +8,7 @@ export type {
   Vec2,
   Size,
   Session,
+  SessionKind,
   Tag,
   NewSessionInput,
   CanvasTransform,
