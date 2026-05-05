@@ -93,6 +93,7 @@ export function ThemeEditorTab() {
   const customTheme = useSettingsStore((s) => s.customTheme);
   const setCustomTheme = useSettingsStore((s) => s.setCustomTheme);
   const [mode, setMode] = useState<Mode>('light');
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Resolve current values: start from claude defaults, layer customTheme overrides.
   const baseLight = useMemo(() => themes.claude.ui.light, []);
@@ -165,9 +166,9 @@ export function ThemeEditorTab() {
             light: parsed.light ?? {},
             dark: parsed.dark ?? {},
           });
+          setImportError(null);
         } catch (err) {
-          // eslint-disable-next-line no-alert
-          alert(`Could not import theme JSON: ${(err as Error).message}`);
+          setImportError(`Could not import theme JSON — ${(err as Error).message}`);
         }
       };
       reader.readAsText(file);
@@ -249,12 +250,36 @@ export function ThemeEditorTab() {
         </div>
       </div>
 
+      {importError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-control border px-3 py-2 font-ui text-[12px]"
+          style={{
+            background: 'rgba(220, 38, 38, 0.10)',
+            borderColor: 'rgba(220, 38, 38, 0.50)',
+            color: 'var(--danger)',
+          }}
+        >
+          <span className="flex-1">{importError}</span>
+          <button
+            type="button"
+            onClick={() => setImportError(null)}
+            aria-label="Dismiss"
+            className="cursor-pointer text-text-muted hover:text-text-primary"
+          >
+            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden>
+              <path d="M6 6L18 18M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {textOnPanel < 4.5 && (
         <div
           className="rounded-control border px-3 py-2 font-ui text-[12px]"
           style={{ background: 'var(--accent-soft)', borderColor: 'var(--warning)', color: 'var(--warning)' }}
         >
-          ⚠ Text-primary on panel-background contrast is {textOnPanel.toFixed(2)}:1, below the WCAG AA
+          Text-primary on panel-background contrast is {textOnPanel.toFixed(2)}:1, below the WCAG AA
           threshold of 4.5:1.
         </div>
       )}

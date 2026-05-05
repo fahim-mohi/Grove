@@ -28,7 +28,6 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
   const bringToFront = useWorkspaceStore((s) => s.bringToFront);
   const reorderSessions = useWorkspaceStore((s) => s.reorderSessions);
   const removeSession = useWorkspaceStore((s) => s.removeSession);
-  const renameSession = useWorkspaceStore((s) => s.renameSession);
   const tagOrder = useWorkspaceStore((s) => s.tagOrder);
   const tagsMap = useWorkspaceStore((s) => s.tags);
   const filterTagId = useWorkspaceStore((s) => s.filterTagId);
@@ -78,11 +77,14 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
         label: 'Rename',
         shortcut: 'F2',
         onSelect: () => {
-          // The InlineRename inside SessionHeader handles dbl-click. For
-          // now, prompt-based rename keeps this menu functional until
-          // Phase 11 wires F2 globally.
-          const next = window.prompt('Rename session', session.name);
-          if (next && next.trim()) renameSession(id, next.trim());
+          // Focus the session first so the panel is visible + on top, then
+          // dispatch the same custom event the F2 shortcut uses to put
+          // SessionHeader into inline-rename mode.
+          focusSession(id);
+          bringToFront(id);
+          window.dispatchEvent(
+            new CustomEvent('grove:rename-session', { detail: { sessionId: id } }),
+          );
         },
       },
       {
