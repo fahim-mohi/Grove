@@ -12,6 +12,9 @@ export const IpcChannel = {
   SYSTEM_IS_CLAUDE_INSTALLED: 'system:is-claude-installed',
   DIALOG_CONFIRM: 'dialog:confirm',
   DIALOG_CHOOSE_DIRECTORY: 'dialog:choose-directory',
+  STORE_GET_ALL: 'store:get-all',
+  STORE_SET: 'store:set',
+  STORE_RESET: 'store:reset',
 } as const;
 
 export type IpcChannel = (typeof IpcChannel)[keyof typeof IpcChannel];

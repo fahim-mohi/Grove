@@ -9,6 +9,8 @@ import {
   type PtyWritePayload,
 } from './ipc-channels';
 import type { ConfirmOptions } from '../shared/grove-api';
+import * as storeManager from './store-manager';
+import type { PersistedState } from '../shared/persistence';
 
 const PRELOAD_PATH = join(__dirname, '../preload/index.js');
 const RENDERER_DEV_URL = process.env['ELECTRON_RENDERER_URL'];
@@ -17,11 +19,34 @@ const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
 const ptyManager = new PtyManager();
+let isQuitting = false;
+let windowStateSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
-function createMainWindow(): void {
+function clampToDisplays(state: PersistedState['window']): PersistedState['window'] {
+  const { screen } = require('electron') as typeof import('electron');
+  const displays = screen.getAllDisplays();
+  if (state.x === undefined || state.y === undefined) return state;
+  const intersects = displays.some((d) => {
+    const b = d.bounds;
+    const cx = (state.x ?? 0) + state.width / 2;
+    const cy = (state.y ?? 0) + state.height / 2;
+    return cx >= b.x && cx <= b.x + b.width && cy >= b.y && cy <= b.y + b.height;
+  });
+  if (intersects) return state;
+  // Drop x/y so Electron centers on primary display.
+  const { x: _x, y: _y, ...rest } = state;
+  return rest;
+}
+
+async function createMainWindow(): Promise<void> {
+  const persisted = await storeManager.getAll();
+  const winState = clampToDisplays(persisted.window);
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: winState.width,
+    height: winState.height,
+    x: winState.x,
+    y: winState.y,
     minWidth: 1024,
     minHeight: 640,
     show: false,
@@ -37,6 +62,31 @@ function createMainWindow(): void {
       sandbox: false,
     },
   });
+
+  if (winState.isFullscreen) {
+    mainWindow.setFullScreen(true);
+  }
+
+  function persistWindowState(): void {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (windowStateSaveTimer) clearTimeout(windowStateSaveTimer);
+    windowStateSaveTimer = setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      const bounds = mainWindow.getBounds();
+      void storeManager.setKey('window', {
+        width: bounds.width,
+        height: bounds.height,
+        x: bounds.x,
+        y: bounds.y,
+        isFullscreen: mainWindow.isFullScreen(),
+      });
+    }, 250);
+  }
+
+  mainWindow.on('resize', persistWindowState);
+  mainWindow.on('move', persistWindowState);
+  mainWindow.on('enter-full-screen', persistWindowState);
+  mainWindow.on('leave-full-screen', persistWindowState);
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show();
@@ -86,6 +136,18 @@ function registerIpcHandlers(): void {
     return ptyManager.isClaudeInstalled();
   });
 
+  ipcMain.handle(IpcChannel.STORE_GET_ALL, async () => {
+    return await storeManager.getAll();
+  });
+
+  ipcMain.handle(IpcChannel.STORE_SET, async (_event, patch: Record<string, unknown>) => {
+    await storeManager.setMany(patch as Partial<PersistedState>);
+  });
+
+  ipcMain.handle(IpcChannel.STORE_RESET, async () => {
+    await storeManager.reset();
+  });
+
   ipcMain.handle(
     IpcChannel.DIALOG_CHOOSE_DIRECTORY,
     async (_event, opts: { title?: string; defaultPath?: string }) => {
@@ -133,7 +195,7 @@ function registerIpcHandlers(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
     app.setAboutPanelOptions({
       applicationName: 'Grove',
@@ -145,15 +207,41 @@ app.whenReady().then(() => {
   nativeTheme.themeSource = 'system';
 
   registerIpcHandlers();
-  createMainWindow();
+  await createMainWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
   });
 });
 
-app.on('before-quit', () => {
-  ptyManager.killAll();
+app.on('before-quit', async (event) => {
+  if (isQuitting) return;
+  if (ptyManager.size() === 0) {
+    ptyManager.killAll();
+    return;
+  }
+  // Block the quit until the user confirms.
+  event.preventDefault();
+  const parent = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+  const opts = {
+    type: 'warning' as const,
+    title: 'Quit Grove?',
+    message: `Quit Grove?`,
+    detail: `${ptyManager.size()} session${ptyManager.size() === 1 ? ' is' : 's are'} running. Quitting will terminate ${ptyManager.size() === 1 ? 'it' : 'them all'}.`,
+    buttons: ['Quit', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  };
+  const result = parent
+    ? await dialog.showMessageBox(parent, opts)
+    : await dialog.showMessageBox(opts);
+  if (result.response === 0) {
+    isQuitting = true;
+    ptyManager.killAll();
+    if (windowStateSaveTimer) clearTimeout(windowStateSaveTimer);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {

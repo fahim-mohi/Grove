@@ -66,6 +66,17 @@ const groveApi = {
       return ipcRenderer.invoke(IpcChannel.DIALOG_CHOOSE_DIRECTORY, opts ?? {});
     },
   },
+  store: {
+    getAll(): Promise<unknown> {
+      return ipcRenderer.invoke(IpcChannel.STORE_GET_ALL);
+    },
+    setMany(patch: Record<string, unknown>): Promise<void> {
+      return ipcRenderer.invoke(IpcChannel.STORE_SET, patch);
+    },
+    reset(): Promise<void> {
+      return ipcRenderer.invoke(IpcChannel.STORE_RESET);
+    },
+  },
 } as const;
 
 export type GroveApi = typeof groveApi;

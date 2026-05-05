@@ -66,4 +66,9 @@ export interface GroveApi {
     confirm: (opts: ConfirmOptions) => Promise<boolean>;
     chooseDirectory: (opts?: { title?: string; defaultPath?: string }) => Promise<string | null>;
   };
+  store: {
+    getAll: () => Promise<unknown>;
+    setMany: (patch: Record<string, unknown>) => Promise<void>;
+    reset: () => Promise<void>;
+  };
 }
