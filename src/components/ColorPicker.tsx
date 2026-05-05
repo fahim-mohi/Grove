@@ -91,7 +91,7 @@ export function ColorPicker({
       aria-label="Choose color"
       className="w-[224px] rounded-control border border-edge bg-modal p-3 shadow-modal"
     >
-      <div className="mb-3 grid grid-cols-8 gap-1.5">
+      <div className="mb-3 flex gap-1.5">
         {SWATCHES.map((swatch) => {
           const selected = swatch.toUpperCase() === value.toUpperCase();
           return (
@@ -101,16 +101,16 @@ export function ColorPicker({
               onClick={() => handleSwatch(swatch)}
               aria-label={`Color ${swatch}`}
               aria-pressed={selected}
-              className={`h-6 w-6 cursor-pointer rounded-control transition-transform duration-fast ease-out hover:scale-110 ${
-                selected ? 'ring-2 ring-offset-2' : ''
-              }`}
+              className="cursor-pointer transition-transform duration-fast ease-out hover:scale-110"
               style={{
+                width: 22,
+                height: 22,
+                borderRadius: 999,
                 backgroundColor: swatch,
-                ...(selected
-                  ? {
-                      boxShadow: `0 0 0 2px var(--bg-modal), 0 0 0 4px var(--accent-ring)`,
-                    }
-                  : {}),
+                border: `2px solid ${selected ? 'var(--text-primary)' : 'transparent'}`,
+                boxShadow: selected
+                  ? `0 0 0 1px ${swatch}40`
+                  : undefined,
               }}
             />
           );

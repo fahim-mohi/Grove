@@ -90,10 +90,13 @@ export function TagBadge({
       onPointerDown={(e) => e.stopPropagation()}
       aria-pressed={onClick ? active : undefined}
       title={tag.name}
-      className={`relative inline-flex flex-shrink-0 items-center gap-1 rounded-pill font-ui font-medium transition-colors duration-base ease-out ${
+      className={`relative inline-flex flex-shrink-0 items-center gap-1 font-ui font-medium transition-colors duration-base ease-out ${
         onClick ? 'cursor-pointer hover:brightness-110' : ''
       }`}
       style={{
+        // sm = full pill (sidebar tag strip, dialog picker, settings table).
+        // xs = compact 4px rounded-rect (panel header — asset pack form).
+        borderRadius: size === 'xs' ? 4 : 999,
         height,
         padding: `0 ${padX}px`,
         fontSize,

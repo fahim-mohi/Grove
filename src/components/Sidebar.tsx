@@ -173,16 +173,23 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
         />
       </div>
 
-      <div className="flex flex-shrink-0 items-center justify-between px-3 pb-1 pt-3">
-        <span className="font-ui text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      <div className="flex flex-shrink-0 items-center justify-between px-3 pb-1.5 pt-4">
+        <span
+          className="font-ui font-semibold uppercase"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.1em',
+            color: 'var(--text-soft, var(--text-muted))',
+          }}
+        >
           Sessions
         </span>
-        <span className="font-terminal text-[11px] text-text-muted">{visibleSessions.length}</span>
+        <span className="font-terminal text-[10px] text-text-muted">{visibleSessions.length}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto" role="list" aria-label="Sessions">
         {visibleSessions.length === 0 ? (
-          <div className="px-3 py-2 font-ui text-[12px] text-text-muted">
+          <div className="mx-1.5 px-2 py-2 font-ui text-[12px] text-text-muted">
             {search ? `No sessions match "${search}"` : 'No sessions yet'}
           </div>
         ) : (
@@ -208,15 +215,22 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
 
       {tmuxAvailable && externalTmux.length > 0 && (
         <div className="flex flex-shrink-0 flex-col gap-1 border-t border-edge px-2 py-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="font-ui text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+          <div className="flex items-center justify-between px-2">
+            <span
+              className="font-ui font-semibold uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                color: 'var(--text-soft, var(--text-muted))',
+              }}
+            >
               In tmux
             </span>
             <span className="font-terminal text-[10px] text-text-muted">
               {externalTmux.length}
             </span>
           </div>
-          <p className="px-1 pb-1 font-ui text-[10px] text-text-muted">
+          <p className="px-2 pb-1 font-ui text-[10px] text-text-muted">
             Drag onto canvas to attach
           </p>
           <div className="flex flex-col gap-0.5">
@@ -241,7 +255,14 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
 
       {tagOrder.length > 0 && (
         <div className="flex flex-shrink-0 flex-col gap-1.5 border-t border-edge px-3 py-3">
-          <span className="font-ui text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+          <span
+            className="px-1 font-ui font-semibold uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              color: 'var(--text-soft, var(--text-muted))',
+            }}
+          >
             Tags
           </span>
           <div className="flex flex-wrap gap-1">

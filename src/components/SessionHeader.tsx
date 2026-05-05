@@ -262,7 +262,7 @@ function TagsInline({ tags }: { tags: Tag[] }) {
   return (
     <div className="relative z-10 flex items-center gap-1">
       {inline.map((tag) => (
-        <TagBadge key={tag.id} tag={tag} size="sm" />
+        <TagBadge key={tag.id} tag={tag} size="xs" />
       ))}
       {overflow.length > 0 && (
         <div className="relative">
