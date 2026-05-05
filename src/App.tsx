@@ -68,21 +68,28 @@ export function App() {
     let timer: number | null = null;
 
     async function refresh(): Promise<void> {
-      const ok = await window.grove.tmux.isAvailable();
-      if (cancelled) return;
-      setTmuxAvailable(ok);
-      if (!ok) {
+      try {
+        const ok = await window.grove.tmux.isAvailable();
+        if (cancelled) return;
+        setTmuxAvailable(ok);
+        if (!ok) {
+          setExternalTmuxSessions([]);
+          return;
+        }
+        const all = await window.grove.tmux.listSessions();
+        if (cancelled) return;
+        const groveTmuxNames = new Set(
+          Object.values(useWorkspaceStore.getState().sessions)
+            .filter((s) => s.kind === 'tmux' && s.attached !== false && s.tmuxName)
+            .map((s) => s.tmuxName!),
+        );
+        setExternalTmuxSessions(all.filter((s) => !groveTmuxNames.has(s.name)));
+      } catch (err) {
+        // tmux server may be transiently unreachable — treat as no
+        // external sessions and keep polling. Don't surface to the user.
+        if (cancelled) return;
         setExternalTmuxSessions([]);
-        return;
       }
-      const all = await window.grove.tmux.listSessions();
-      if (cancelled) return;
-      const groveTmuxNames = new Set(
-        Object.values(useWorkspaceStore.getState().sessions)
-          .filter((s) => s.kind === 'tmux' && s.attached !== false && s.tmuxName)
-          .map((s) => s.tmuxName!),
-      );
-      setExternalTmuxSessions(all.filter((s) => !groveTmuxNames.has(s.name)));
     }
 
     void refresh();

@@ -84,11 +84,19 @@ export class TmuxManager {
       });
       return { stdout: result.stdout, stderr: result.stderr };
     } catch (err) {
-      // tmux exits non-zero for "no sessions" — surface as empty rather
-      // than throwing.
+      // tmux exits non-zero for "no server running" — surface as empty
+      // rather than throwing. The exact stderr varies across versions:
+      //   tmux <3.4:  "no server running on /tmp/tmux-…"
+      //   tmux >=3.4: "error connecting to /private/tmp/tmux-…/default
+      //               (No such file or directory)"
       const e = err as ExecFileException & { stdout?: string; stderr?: string };
-      if (e.stderr?.includes('no server running')) {
-        return { stdout: '', stderr: e.stderr };
+      const stderr = e.stderr ?? '';
+      if (
+        stderr.includes('no server running') ||
+        stderr.includes('error connecting to') ||
+        stderr.includes('No such file or directory')
+      ) {
+        return { stdout: '', stderr };
       }
       throw err;
     }
