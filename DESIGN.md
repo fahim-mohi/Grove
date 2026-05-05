@@ -1486,11 +1486,18 @@ Spinner: 16×16, 2px stroke, `--accent` color, rotates over 800ms linear (the on
 
 ### 15.1 Logo
 
-A stylized `>_` glyph (terminal prompt) inside a rounded square (the "grove" frame). Two-color minimum:
+A stylized `>_` glyph (terminal prompt) inside a rounded square (the "grove" frame), with an organic branching motif extending from the prompt — the branches terminate in small terminal nodes, evoking a literal "grove" of connected sessions.
 
-- Frame: `--accent` (claude orange in marketing) with subtle inner shadow.
-- Glyph: white at 95% opacity.
+Reference concept: [`assets/concepts/grove-icon-concept-01.png`](assets/concepts/grove-icon-concept-01.png) — canonical direction for the icon.
+
+- Frame: `--accent` (claude orange `#D97706` in marketing) with subtle inner shadow.
+- Glyph: white at 95% opacity, terminal prompt `>_` left-aligned within the icon's safe area.
+- Branching motif: thin white strokes ramifying right and down from the prompt, terminating in 2 small rounded-square terminal-node leaves.
 - Corner radius: 22% of icon size (matches macOS Big Sur icon grid).
+- Variants required:
+  1. **Filled orange** (primary, used for app icon)
+  2. **White outline on dark** (used for tray / menu bar)
+  3. **Filled dark on light** (used for in-app branding when dark theme inverts)
 
 ### 15.2 Asset list
 

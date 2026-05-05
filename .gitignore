@@ -9,3 +9,11 @@ dist-electron/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# Stray root-level screenshots / images (real assets live in assets/)
+/*.png
+/*.PNG
+/*.jpg
+/*.JPG
+/*.jpeg
+/*.JPEG
