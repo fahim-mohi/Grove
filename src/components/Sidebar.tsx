@@ -11,8 +11,21 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useWorkspaceStore } from '../store/workspace';
 import { SessionListItem } from './SessionListItem';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
-import { TagBadge } from './TagBadge';
 import { ExternalSessionItem } from './ExternalSessionItem';
+
+// Compose rgba() from a hex string + alpha. Used for the active filter
+// chip's tint so it picks up the tag's color without dragging in the
+// full TagBadge pill treatment.
+function hexRgba(hex: string, alpha: number): string {
+  const c = hex.replace('#', '');
+  const expanded =
+    c.length === 3 ? c[0]! + c[0]! + c[1]! + c[1]! + c[2]! + c[2]! : c;
+  if (expanded.length !== 6) return hex;
+  const r = parseInt(expanded.slice(0, 2), 16);
+  const g = parseInt(expanded.slice(2, 4), 16);
+  const b = parseInt(expanded.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 interface SidebarProps {
   onOpenNewSession: () => void;
@@ -269,14 +282,41 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
             {tagOrder.map((id) => {
               const tag = tagsMap[id];
               if (!tag) return null;
+              const active = filterTagId === tag.id;
               return (
-                <TagBadge
+                <button
                   key={tag.id}
-                  tag={tag}
-                  size="sm"
-                  active={filterTagId === tag.id}
-                  onClick={() => setFilterTag(filterTagId === tag.id ? null : tag.id)}
-                />
+                  type="button"
+                  onClick={() => setFilterTag(active ? null : tag.id)}
+                  aria-pressed={active}
+                  title={active ? `Clear filter: ${tag.name}` : `Filter: ${tag.name}`}
+                  className="cursor-pointer font-ui font-medium transition-colors duration-base ease-out"
+                  style={
+                    // When active: tinted in the tag's color so the user
+                    // sees what's filtered. When inactive: quiet
+                    // neutral outlined chip per asset pack (rgba white
+                    // 3% bg + border-edge + text-muted).
+                    active
+                      ? {
+                          fontSize: 11,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: hexRgba(tag.color, 0.16),
+                          color: tag.color,
+                          border: `1px solid ${hexRgba(tag.color, 0.40)}`,
+                        }
+                      : {
+                          fontSize: 11,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border-default)',
+                        }
+                  }
+                >
+                  {tag.name}
+                </button>
               );
             })}
           </div>
