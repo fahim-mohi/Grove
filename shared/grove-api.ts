@@ -61,6 +61,11 @@ export interface GroveApi {
     versions: () => SystemVersions;
     platform: () => NodeJS.Platform;
     isClaudeInstalled: () => Promise<boolean>;
+    // Given a filesystem path (typically extracted from a Finder /
+    // Terminal proxy-icon drop's text/uri-list), return the directory
+    // to spawn Claude in: the path itself if it's a directory, the
+    // parent directory if it's a file. Returns null on failure.
+    resolveDropFolder: (path: string) => Promise<string | null>;
   };
   dialog: {
     confirm: (opts: ConfirmOptions) => Promise<boolean>;

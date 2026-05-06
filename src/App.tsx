@@ -46,6 +46,24 @@ export function App() {
     });
   }, []);
 
+  // Suppress Electron's default file-drop behavior (navigating the
+  // BrowserWindow to file://). Without this, dropping a folder anywhere
+  // outside the canvas's own drop handler nukes the app. The canvas
+  // handler still runs first because dragover bubbles, and only its
+  // path calls e.preventDefault — these document-level handlers just
+  // catch the leftovers.
+  useEffect(() => {
+    function block(e: DragEvent): void {
+      e.preventDefault();
+    }
+    document.addEventListener('dragover', block);
+    document.addEventListener('drop', block);
+    return () => {
+      document.removeEventListener('dragover', block);
+      document.removeEventListener('drop', block);
+    };
+  }, []);
+
   function completeOnboarding(): void {
     setShowOnboarding(false);
     void window.grove.store.setMany({ onboardingCompletedAt: Date.now() });

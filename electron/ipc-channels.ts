@@ -10,6 +10,7 @@ export const IpcChannel = {
   PTY_DATA: 'pty:data',
   PTY_EXIT: 'pty:exit',
   SYSTEM_IS_CLAUDE_INSTALLED: 'system:is-claude-installed',
+  SYSTEM_RESOLVE_DROP_FOLDER: 'system:resolve-drop-folder',
   DIALOG_CONFIRM: 'dialog:confirm',
   DIALOG_CHOOSE_DIRECTORY: 'dialog:choose-directory',
   STORE_GET_ALL: 'store:get-all',

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell } from 'electron';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { stat } from 'node:fs/promises';
 import { PtyManager } from './pty-manager';
 import { TmuxManager } from './tmux-manager';
 import {
@@ -137,6 +138,24 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.SYSTEM_IS_CLAUDE_INSTALLED, () => {
     return ptyManager.isClaudeInstalled();
   });
+
+  // Drag-and-drop helper. Renderer hands us a path from text/uri-list
+  // (Finder folder, Terminal proxy icon, VS Code file, etc); we stat it
+  // and return either the path itself (if dir) or its parent dir (if
+  // file). Returns null on failure so the renderer can ignore the drop
+  // silently.
+  ipcMain.handle(
+    IpcChannel.SYSTEM_RESOLVE_DROP_FOLDER,
+    async (_event, rawPath: string): Promise<string | null> => {
+      if (typeof rawPath !== 'string' || !rawPath) return null;
+      try {
+        const s = await stat(rawPath);
+        return s.isDirectory() ? rawPath : dirname(rawPath);
+      } catch {
+        return null;
+      }
+    },
+  );
 
   ipcMain.handle(IpcChannel.STORE_GET_ALL, async () => {
     return await storeManager.getAll();

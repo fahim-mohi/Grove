@@ -60,6 +60,9 @@ export function WorkspaceCanvas() {
   const tagsMap = useWorkspaceStore((s) => s.tags);
   const addSession = useWorkspaceStore((s) => s.addSession);
   const [dropActive, setDropActive] = useState(false);
+  // Distinguishes the two drop intents so the overlay shows the right
+  // copy: tmux session attach vs folder/cwd → spawn Claude there.
+  const [dropKind, setDropKind] = useState<'tmux' | 'folder' | null>(null);
 
   const sortedSessions = useMemo(
     () => sessionOrder.map((id) => sessionsMap[id]).filter((s): s is Session => Boolean(s)),
@@ -235,34 +238,41 @@ export function WorkspaceCanvas() {
     zoomCanvasAt(e.clientX, e.clientY, factor);
   }
 
-  // Native HTML5 drag-and-drop receiver for external tmux sessions
-  // dragged from the Sidebar. The MIME type is set by ExternalSessionItem.
+  // Native HTML5 drag-and-drop receiver. Two accepted drop intents:
+  //   1) Sidebar's external tmux item — application/x-grove-tmux-session
+  //   2) Folder/file from Finder, Terminal/iTerm proxy icon, VS Code, etc.
+  //      → spawn a fresh Claude session with cwd set to the folder.
+  // Browsers expose Finder drags as `Files` and/or `text/uri-list`; we
+  // accept either at the dragOver gate (we read the actual contents on
+  // drop). Without this acceptance the cursor shows the "no drop" badge
+  // and the drop event never fires — which is the "nothing happens"
+  // symptom the user hit.
   function handleDragOver(e: React.DragEvent): void {
-    if (!Array.from(e.dataTransfer.types).includes(TMUX_DRAG_TYPE)) return;
-    e.preventDefault(); // signal we accept the drop
-    e.dataTransfer.dropEffect = 'copy';
+    const types = Array.from(e.dataTransfer.types);
+    const isTmux = types.includes(TMUX_DRAG_TYPE);
+    const isFolder =
+      types.includes('Files') || types.includes('text/uri-list');
+    if (!isTmux && !isFolder) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = isTmux ? 'copy' : 'link';
     if (!dropActive) setDropActive(true);
+    const nextKind = isTmux ? 'tmux' : 'folder';
+    if (dropKind !== nextKind) setDropKind(nextKind);
   }
 
   function handleDragLeave(e: React.DragEvent): void {
-    if (e.currentTarget === e.target) setDropActive(false);
+    if (e.currentTarget === e.target) {
+      setDropActive(false);
+      setDropKind(null);
+    }
   }
 
   function handleDrop(e: React.DragEvent): void {
     setDropActive(false);
-    const raw = e.dataTransfer.getData(TMUX_DRAG_TYPE);
-    if (!raw) return;
+    setDropKind(null);
     e.preventDefault();
-    let payload: { tmuxName?: string };
-    try {
-      payload = JSON.parse(raw);
-    } catch {
-      return;
-    }
-    if (!payload.tmuxName) return;
 
-    // Convert client (viewport) coords into canvas-space coords by
-    // reversing the canvas transform.
+    // Convert viewport → canvas-world coords once for either intent.
     const root = containerRef.current;
     const rect = root?.getBoundingClientRect();
     const clientX = e.clientX - (rect?.left ?? 0);
@@ -270,17 +280,72 @@ export function WorkspaceCanvas() {
     const worldX = (clientX - canvasTransform.x) / canvasTransform.scale;
     const worldY = (clientY - canvasTransform.y) / canvasTransform.scale;
 
-    const displayName = payload.tmuxName.startsWith('grove-')
-      ? payload.tmuxName.slice(6).replace(/-[a-z0-9]{4}$/, '')
-      : payload.tmuxName;
+    // Intent 1: tmux attach (sidebar drag).
+    const tmuxRaw = e.dataTransfer.getData(TMUX_DRAG_TYPE);
+    if (tmuxRaw) {
+      let payload: { tmuxName?: string };
+      try {
+        payload = JSON.parse(tmuxRaw);
+      } catch {
+        return;
+      }
+      if (!payload.tmuxName) return;
+      const displayName = payload.tmuxName.startsWith('grove-')
+        ? payload.tmuxName.slice(6).replace(/-[a-z0-9]{4}$/, '')
+        : payload.tmuxName;
+      addSession({
+        name: displayName,
+        color: '#22C55E',
+        kind: 'tmux',
+        tmuxName: payload.tmuxName,
+        position: { x: worldX - 360, y: worldY - 240 },
+      });
+      return;
+    }
 
-    addSession({
-      name: displayName,
-      color: '#22C55E', // green = "from outside"; user can recolor
-      kind: 'tmux',
-      tmuxName: payload.tmuxName,
-      // Center the panel on the drop point (default size 720x480).
-      position: { x: worldX - 360, y: worldY - 240 },
+    // Intent 2: folder/file from Finder / Terminal proxy icon / VS Code.
+    // Prefer text/uri-list (always present for Finder + Terminal proxy
+    // drags, contains file:// URLs). Fall back to dataTransfer.files
+    // when uri-list is unavailable.
+    const uriList = e.dataTransfer.getData('text/uri-list');
+    let firstPath: string | null = null;
+
+    if (uriList) {
+      const firstUri = uriList
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .find((l) => l && !l.startsWith('#'));
+      if (firstUri && firstUri.startsWith('file://')) {
+        try {
+          firstPath = decodeURIComponent(new URL(firstUri).pathname);
+        } catch {
+          firstPath = null;
+        }
+      }
+    }
+
+    if (!firstPath && e.dataTransfer.files.length > 0) {
+      // Electron's File objects expose .path (kept for renderer use).
+      // TypeScript's File type doesn't, so cast through unknown.
+      const f = e.dataTransfer.files[0] as unknown as { path?: string };
+      if (f.path) firstPath = f.path;
+    }
+
+    if (!firstPath) return;
+
+    // Main process stat()s the path and returns the folder to spawn in
+    // (the path itself if dir, parent dir if file). Falls back to no-op
+    // if the path doesn't exist or can't be stat()ed.
+    void window.grove.system.resolveDropFolder(firstPath).then((folder) => {
+      if (!folder) return;
+      const displayName = folder.split('/').filter(Boolean).pop() ?? 'claude';
+      addSession({
+        name: displayName,
+        color: '#D97745', // accent — locally spawned, "from a folder"
+        kind: 'local',
+        cwd: folder,
+        position: { x: worldX - 360, y: worldY - 240 },
+      });
     });
   }
 
@@ -410,7 +475,9 @@ export function WorkspaceCanvas() {
               className="rounded-panel border border-edge bg-modal px-5 py-3 font-ui text-[14px] font-semibold text-text-primary shadow-modal"
               style={{ color: 'var(--accent)' }}
             >
-              Drop to attach session
+              {dropKind === 'folder'
+                ? 'Drop folder to start Claude here'
+                : 'Drop to attach session'}
             </div>
           </div>
         )}

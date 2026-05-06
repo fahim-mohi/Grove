@@ -57,6 +57,9 @@ const groveApi = {
     isClaudeInstalled(): Promise<boolean> {
       return ipcRenderer.invoke(IpcChannel.SYSTEM_IS_CLAUDE_INSTALLED);
     },
+    resolveDropFolder(path: string): Promise<string | null> {
+      return ipcRenderer.invoke(IpcChannel.SYSTEM_RESOLVE_DROP_FOLDER, path);
+    },
   },
   dialog: {
     confirm(opts: ConfirmOptions): Promise<boolean> {
