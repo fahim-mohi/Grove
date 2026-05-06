@@ -46,8 +46,15 @@ export function WorkspaceCanvas() {
   const gridSize = useSettingsStore((s) => s.gridSize);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const cleanupPointerRef = useRef<(() => void) | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [draggingForDetach, setDraggingForDetach] = useState(false);
+
+  const noteDetached = useWorkspaceStore((s) => s.noteDetached);
+  const removeSessionAction = useWorkspaceStore((s) => s.removeSession);
+  const setDetachDropActive = useWorkspaceStore((s) => s.setDetachDropActive);
 
   const setFilterTag = useWorkspaceStore((s) => s.setFilterTag);
   const tagsMap = useWorkspaceStore((s) => s.tags);
@@ -113,29 +120,82 @@ export function WorkspaceCanvas() {
     setDragging(id);
     bringToFront(id);
     focusSession(id);
+
+    // Track pointer position throughout the drag — dnd-kit only gives
+    // us delta in DragEndEvent, but we need the final viewport-space
+    // cursor position to detect a drop onto the sidebar (= detach).
+    function trackPointer(ev: PointerEvent): void {
+      lastPointerRef.current = { x: ev.clientX, y: ev.clientY };
+      const session = useWorkspaceStore.getState().sessions[id];
+      const isTmux = session?.kind === 'tmux';
+      const root = containerRef.current;
+      if (!root || !isTmux) {
+        if (draggingForDetach) setDraggingForDetach(false);
+        return;
+      }
+      const rect = root.getBoundingClientRect();
+      // Sidebar lives to the LEFT of the canvas container. If the
+      // cursor goes left of the canvas's left edge, we're over the
+      // sidebar — eligible for drop-to-detach.
+      const overSidebar = ev.clientX < rect.left;
+      setDraggingForDetach(overSidebar);
+      setDetachDropActive(overSidebar);
+    }
+    window.addEventListener('pointermove', trackPointer);
+    // Cleanup: dragEnd fires before pointerup in dnd-kit, but the
+    // pointermove listener stays. The dragEnd handler removes it.
+    cleanupPointerRef.current = () => window.removeEventListener('pointermove', trackPointer);
   }
 
   function handleDragEnd(e: DragEndEvent): void {
+    cleanupPointerRef.current?.();
+    cleanupPointerRef.current = null;
+
     const id = e.active.id as string;
     const session = useWorkspaceStore.getState().sessions[id];
-    if (session) {
-      // dnd-kit reports delta in screen pixels. Canvas may be scaled,
-      // so divide by scale to get the canvas-space delta.
-      const canvasDx = e.delta.x / canvasTransform.scale;
-      const canvasDy = e.delta.y / canvasTransform.scale;
-      let nx = session.position.x + canvasDx;
-      let ny = session.position.y + canvasDy;
-      if (snapToGrid) {
-        nx = Math.round(nx / gridSize) * gridSize;
-        ny = Math.round(ny / gridSize) * gridSize;
-      }
-      moveSession(id, { x: nx, y: ny });
+    if (!session) {
+      setDragging(null);
+      setDraggingForDetach(false);
+      setDetachDropActive(false);
+      return;
     }
+
+    // Drop-onto-sidebar = detach (only meaningful for tmux sessions —
+    // local PTYs have nowhere to "go" after detach).
+    const root = containerRef.current;
+    const rect = root?.getBoundingClientRect();
+    const overSidebar = rect ? lastPointerRef.current.x < rect.left : false;
+    if (overSidebar && session.kind === 'tmux' && session.tmuxName) {
+      // Surface the handoff toast so the user knows where the session went.
+      noteDetached({ tmuxName: session.tmuxName, sessionName: session.name });
+      void window.grove.tmux.detach(id).then(() => removeSessionAction(id));
+      setDragging(null);
+      setDraggingForDetach(false);
+      setDetachDropActive(false);
+      return;
+    }
+
+    // Otherwise: regular reposition.
+    const canvasDx = e.delta.x / canvasTransform.scale;
+    const canvasDy = e.delta.y / canvasTransform.scale;
+    let nx = session.position.x + canvasDx;
+    let ny = session.position.y + canvasDy;
+    if (snapToGrid) {
+      nx = Math.round(nx / gridSize) * gridSize;
+      ny = Math.round(ny / gridSize) * gridSize;
+    }
+    moveSession(id, { x: nx, y: ny });
     setDragging(null);
+    setDraggingForDetach(false);
+    setDetachDropActive(false);
   }
 
   function handleDragCancel(): void {
+    cleanupPointerRef.current?.();
+    cleanupPointerRef.current = null;
     setDragging(null);
+    setDraggingForDetach(false);
+    setDetachDropActive(false);
   }
 
   function handleCanvasMouseDown(e: React.MouseEvent): void {

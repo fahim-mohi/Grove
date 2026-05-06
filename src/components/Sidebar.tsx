@@ -49,6 +49,7 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
   const externalTmux = useWorkspaceStore((s) => s.externalTmuxSessions);
   const tmuxAvailable = useWorkspaceStore((s) => s.tmuxAvailable);
   const addSession = useWorkspaceStore((s) => s.addSession);
+  const detachDropActive = useWorkspaceStore((s) => s.detachDropActive);
 
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
@@ -169,9 +170,32 @@ export function Sidebar({ onOpenNewSession }: SidebarProps) {
 
   return (
     <aside
-      className="flex flex-shrink-0 flex-col border-r border-edge bg-sidebar"
-      style={{ width: 'var(--sidebar-width)' }}
+      className="relative flex flex-shrink-0 flex-col border-r border-edge bg-sidebar transition-shadow duration-base ease-out"
+      style={{
+        width: 'var(--sidebar-width)',
+        // Visual feedback while a tmux panel is being dragged onto the
+        // sidebar — accent ring + tinted overlay tells the user "drop
+        // here to detach".
+        boxShadow: detachDropActive ? `inset 0 0 0 2px var(--accent)` : undefined,
+      }}
     >
+      {detachDropActive && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          style={{
+            background: 'var(--accent-soft)',
+            zIndex: 5,
+          }}
+        >
+          <div
+            className="rounded-control border border-edge bg-modal px-3 py-2 font-ui text-[12px] font-semibold shadow-modal"
+            style={{ color: 'var(--accent)' }}
+          >
+            Drop to detach
+          </div>
+        </div>
+      )}
       <div
         className="flex flex-shrink-0 items-center border-b border-edge px-3"
         style={{ height: 'var(--toolbar-height)' }}

@@ -44,6 +44,10 @@ export interface WorkspaceState {
   tmuxAvailable: boolean;
   externalTmuxSessions: TmuxSessionInfo[]; // tmux sessions running outside Grove right now
   lastDetachedTmux: { tmuxName: string; sessionName: string; at: number } | null;
+  // True while a panel is being dragged AND the cursor is hovering over
+  // a region that would trigger detach-on-drop (currently the sidebar).
+  // Lets the sidebar render an accent ring as visual confirmation.
+  detachDropActive: boolean;
 
   // Session actions
   addSession: (input: NewSessionInput) => string;
@@ -69,6 +73,7 @@ export interface WorkspaceState {
   setSessionAttached: (id: string, attached: boolean) => void;
   noteDetached: (info: { tmuxName: string; sessionName: string }) => void;
   clearDetachedNotice: () => void;
+  setDetachDropActive: (active: boolean) => void;
 
   // Canvas transform actions
   setCanvasTransform: (next: Partial<CanvasTransform>) => void;
@@ -107,6 +112,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   tmuxAvailable: false,
   externalTmuxSessions: [],
   lastDetachedTmux: null,
+  detachDropActive: false,
 
   addSession(input) {
     const id = nanoid();
@@ -278,6 +284,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   clearDetachedNotice() {
     set({ lastDetachedTmux: null });
+  },
+
+  setDetachDropActive(active) {
+    set({ detachDropActive: active });
   },
 
   setCanvasTransform(next) {
