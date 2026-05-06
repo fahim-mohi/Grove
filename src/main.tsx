@@ -1,4 +1,3 @@
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@xterm/xterm/css/xterm.css';
 import { App } from './App';
@@ -9,23 +8,19 @@ const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element #root not found in index.html');
 
 async function bootstrap(): Promise<void> {
-  // Pull persisted state into the Zustand stores before React mounts so
-  // the first render shows the user's prior session layout. Failure here
-  // is non-fatal — defaults render and a clean save will overwrite later.
   try {
     await hydrateStores();
   } catch (err) {
     console.error('[grove] hydrate failed:', err);
   }
 
-  // Start persisting future changes (debounced 200ms inside the bridge).
   subscribePersistence();
 
-  createRoot(rootEl!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
+  // StrictMode intentionally omitted: it double-invokes effects in dev,
+  // which double-spawns + kills PTYs through useSession's mount/cleanup
+  // (user sees "exit 0" the moment a session opens). Re-enable once
+  // useSession's lifecycle is idempotent across remounts.
+  createRoot(rootEl!).render(<App />);
 }
 
 void bootstrap();

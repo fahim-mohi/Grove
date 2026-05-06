@@ -107,7 +107,9 @@ async function createMainWindow(): Promise<void> {
 
   if (isDev && RENDERER_DEV_URL) {
     mainWindow.loadURL(RENDERER_DEV_URL);
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    // DevTools auto-open is a massive perf hit — Electron's renderer
+    // gets throttled hard while Inspector is attached. Open it via
+    // Cmd+Opt+I when you actually need it.
   } else {
     mainWindow.loadFile(RENDERER_PROD_HTML);
   }

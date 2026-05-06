@@ -202,11 +202,9 @@ export function WorkspaceCanvas() {
   }
 
   function handleCanvasMouseDown(e: React.MouseEvent): void {
-    // Empty-canvas click → deselect.
     if (e.target === e.currentTarget) {
       focusSession(null);
     }
-    // Pan: middle-mouse OR Space+left-drag.
     const shouldPan = e.button === 1 || (e.button === 0 && spacePressed);
     if (!shouldPan) return;
     e.preventDefault();
@@ -214,28 +212,86 @@ export function WorkspaceCanvas() {
 
     let lastX = e.clientX;
     let lastY = e.clientY;
+    // rAF-batch pan deltas: mousemove fires faster than 60Hz, but the
+    // store update + subsequent re-render only need to land once per
+    // frame. Without this, every pixel of cursor travel does a full
+    // React tree pass — that's the lag the user is feeling.
+    let pendingDx = 0;
+    let pendingDy = 0;
+    let rafId: number | null = null;
+
+    function flush(): void {
+      rafId = null;
+      if (pendingDx === 0 && pendingDy === 0) return;
+      const dx = pendingDx;
+      const dy = pendingDy;
+      pendingDx = 0;
+      pendingDy = 0;
+      panCanvas(dx, dy);
+    }
 
     function onMove(ev: globalThis.MouseEvent): void {
-      const dx = ev.clientX - lastX;
-      const dy = ev.clientY - lastY;
+      pendingDx += ev.clientX - lastX;
+      pendingDy += ev.clientY - lastY;
       lastX = ev.clientX;
       lastY = ev.clientY;
-      panCanvas(dx, dy);
+      if (rafId === null) rafId = requestAnimationFrame(flush);
     }
     function onUp(): void {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      flush();
       setIsPanning(false);
     }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   }
 
+  // rAF-batched wheel handler. Two intents:
+  //   • cmd/ctrl + wheel → zoom at cursor (Figma/Miro convention)
+  //   • plain wheel/trackpad scroll → pan the canvas
+  // Trackpad two-finger scroll fires high-frequency wheel events; without
+  // this batching, every event triggers a Zustand update + React tree
+  // pass → the "scrolling is shit" symptom.
+  const wheelPendingRef = useRef<{
+    panDx: number;
+    panDy: number;
+    zoomFactor: number;
+    zoomX: number;
+    zoomY: number;
+    rafId: number | null;
+  }>({ panDx: 0, panDy: 0, zoomFactor: 1, zoomX: 0, zoomY: 0, rafId: null });
+
   function handleWheel(e: React.WheelEvent): void {
-    if (!(e.ctrlKey || e.metaKey)) return;
     e.preventDefault();
-    const factor = Math.exp(-e.deltaY * 0.0015);
-    zoomCanvasAt(e.clientX, e.clientY, factor);
+    const p = wheelPendingRef.current;
+    if (e.ctrlKey || e.metaKey) {
+      p.zoomFactor *= Math.exp(-e.deltaY * 0.0015);
+      p.zoomX = e.clientX;
+      p.zoomY = e.clientY;
+    } else {
+      // Trackpad horizontal + vertical both relevant. Negative because
+      // wheel deltaY positive = page scrolls down → canvas should move
+      // up (content moves opposite of scroll). Most canvas apps do
+      // this; matches macOS natural scroll on trackpad.
+      p.panDx -= e.deltaX;
+      p.panDy -= e.deltaY;
+    }
+    if (p.rafId === null) {
+      p.rafId = requestAnimationFrame(() => {
+        p.rafId = null;
+        if (p.zoomFactor !== 1) {
+          zoomCanvasAt(p.zoomX, p.zoomY, p.zoomFactor);
+          p.zoomFactor = 1;
+        }
+        if (p.panDx !== 0 || p.panDy !== 0) {
+          panCanvas(p.panDx, p.panDy);
+          p.panDx = 0;
+          p.panDy = 0;
+        }
+      });
+    }
   }
 
   // Native HTML5 drag-and-drop receiver. Two accepted drop intents:
