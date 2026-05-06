@@ -150,6 +150,12 @@ export function App() {
         case 'zoom-out':
           zoomCanvasAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.1);
           break;
+        case 'install-grove-claude':
+          // Surface the InstallShimToast with a synthetic nudge so the
+          // user gets the same one-click install button used by the
+          // post-drop flow.
+          useWorkspaceStore.getState().nudgeInstallShim('');
+          break;
       }
     });
     return unsub;

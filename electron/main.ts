@@ -380,6 +380,10 @@ function buildMenu(): Menu {
                 accelerator: 'CmdOrCtrl+,',
                 click: () => sendAction('open-settings'),
               },
+              {
+                label: 'Install grove-claude Shim…',
+                click: () => sendAction('install-grove-claude'),
+              },
               { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
