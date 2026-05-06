@@ -122,10 +122,21 @@ export class PtyManager extends EventEmitter<PtyManagerEventMap> {
         } as Record<string, string>,
       });
     } catch (err) {
+      // Include enough context to diagnose without round-tripping logs:
+      // the actual command path we tried, the cwd, the errno (if any),
+      // and whether we fell back to a shell. node-pty's plain
+      // "posix_spawnp failed" alone is unactionable.
+      const base = err instanceof Error ? err.message : String(err);
+      const errno =
+        err && typeof err === 'object' && 'code' in err
+          ? ` (errno: ${(err as { code: unknown }).code})`
+          : '';
       return {
         ok: false,
         reason: 'spawn-failed',
-        error: err instanceof Error ? err.message : String(err),
+        error: `${base}${errno}\ncommand: ${command}\ncwd: ${cwd}${
+          usedFallback ? '\nfellback to SHELL (claude binary not found)' : ''
+        }`,
       };
     }
 

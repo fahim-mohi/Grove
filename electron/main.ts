@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import { join, dirname } from 'node:path';
-import { stat } from 'node:fs/promises';
+import { stat, chmod } from 'node:fs/promises';
+import { existsSync, statSync } from 'node:fs';
 import { PtyManager } from './pty-manager';
 import { TmuxManager } from './tmux-manager';
 import {
@@ -439,6 +440,31 @@ function buildMenu(): Menu {
   return Menu.buildFromTemplate(template);
 }
 
+// node-pty's spawn-helper binary on macOS occasionally lands without
+// the execute bit (npm/pnpm extraction strips it depending on tar
+// settings + filesystem). Without +x, every node-pty spawn fails with
+// the opaque "posix_spawnp failed." Self-heal at startup so the user
+// never has to chmod by hand. Cheap, idempotent.
+async function ensurePtyHelperExecutable(): Promise<void> {
+  if (process.platform !== 'darwin') return;
+  const candidates = [
+    join(__dirname, '../../node_modules/node-pty/prebuilds/darwin-x64/spawn-helper'),
+    join(__dirname, '../../node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper'),
+    // Packaged-app paths (asar.unpacked) — included for safety.
+    join(process.resourcesPath ?? '', 'app.asar.unpacked/node_modules/node-pty/prebuilds/darwin-x64/spawn-helper'),
+    join(process.resourcesPath ?? '', 'app.asar.unpacked/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper'),
+  ];
+  for (const p of candidates) {
+    if (!p || !existsSync(p)) continue;
+    try {
+      const mode = statSync(p).mode;
+      if (!(mode & 0o111)) await chmod(p, mode | 0o755);
+    } catch {
+      // Best-effort; skip silently.
+    }
+  }
+}
+
 app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
     app.setAboutPanelOptions({
@@ -449,6 +475,8 @@ app.whenReady().then(async () => {
   }
 
   nativeTheme.themeSource = 'system';
+
+  await ensurePtyHelperExecutable();
 
   Menu.setApplicationMenu(buildMenu());
 
