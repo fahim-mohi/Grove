@@ -66,6 +66,16 @@ export interface GroveApi {
     // to spawn Claude in: the path itself if it's a directory, the
     // parent directory if it's a file. Returns null on failure.
     resolveDropFolder: (path: string) => Promise<string | null>;
+    // Whether ~/.local/bin/grove-claude exists. The shim wraps `claude`
+    // in a deterministic tmux session, making the resulting session
+    // adoptable by Grove via folder drop.
+    hasGroveClaudeShim: () => Promise<boolean>;
+    // Copy the shim into ~/.local/bin/grove-claude (creating the dir if
+    // needed) and chmod +x. Returns the install path on success, or an
+    // error string on failure.
+    installGroveClaudeShim: () => Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >;
   };
   dialog: {
     confirm: (opts: ConfirmOptions) => Promise<boolean>;

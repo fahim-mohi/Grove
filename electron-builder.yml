@@ -6,11 +6,13 @@ directories:
   buildResources: assets
 files:
   - out/**/*
+  - bin/**/*
   - package.json
   - "!**/*.{md,markdown}"
   - "!{.git,.github,.vscode}"
 asarUnpack:
   - "**/node_modules/node-pty/**"
+  - bin/**/*
 mac:
   category: public.app-category.developer-tools
   target:

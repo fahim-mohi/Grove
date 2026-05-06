@@ -23,6 +23,18 @@ const Z_PANEL_RESTING = 10;
 const Z_PANEL_FOCUSED = 20;
 const Z_PANEL_DRAGGING = 30;
 
+// First 8 chars of sha1(path). Matches the hash scheme in bin/grove-claude
+// so a folder dropped onto Grove resolves to the same tmux session name
+// the shim used when launching Claude in that folder.
+async function sha1Prefix(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest('SHA-1', data);
+  const hex = Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return hex.slice(0, 8);
+}
+
 const MIN_PANEL_W = 420;
 const MIN_PANEL_H = 300;
 
@@ -389,20 +401,70 @@ export function WorkspaceCanvas() {
 
     if (!firstPath) return;
 
-    // Main process stat()s the path and returns the folder to spawn in
-    // (the path itself if dir, parent dir if file). Falls back to no-op
-    // if the path doesn't exist or can't be stat()ed.
-    void window.grove.system.resolveDropFolder(firstPath).then((folder) => {
-      if (!folder) return;
-      const displayName = folder.split('/').filter(Boolean).pop() ?? 'claude';
+    void handleFolderDrop(firstPath, worldX, worldY);
+  }
+
+  // Resolve a dropped path to a Grove session. Two paths:
+  //   1) Adoption — if the user previously ran `grove-claude` in this
+  //      folder, a tmux session named grove-<hash-of-cwd> exists. We
+  //      attach to it. Their existing Claude session keeps running;
+  //      Grove just becomes another client. Drag back to sidebar to
+  //      detach. This is the seamless workflow the user actually wants.
+  //   2) Fallback — no shim session for this folder. Spawn a fresh
+  //      local Claude in that cwd and nudge the user to install the
+  //      shim so future drops adopt instead of spawning fresh.
+  async function handleFolderDrop(
+    firstPath: string,
+    worldX: number,
+    worldY: number,
+  ): Promise<void> {
+    const folder = await window.grove.system.resolveDropFolder(firstPath);
+    if (!folder) return;
+
+    const displayName = folder.split('/').filter(Boolean).pop() ?? 'claude';
+    const hash = await sha1Prefix(folder);
+    const candidateName = `grove-${hash}`;
+
+    // Look for the matching tmux session.
+    let hasShimSession = false;
+    try {
+      const tmuxSessions = await window.grove.tmux.listSessions();
+      hasShimSession = tmuxSessions.some((s) => s.name === candidateName);
+    } catch {
+      hasShimSession = false;
+    }
+
+    if (hasShimSession) {
       addSession({
         name: displayName,
-        color: '#D97745', // accent — locally spawned, "from a folder"
-        kind: 'local',
-        cwd: folder,
+        color: '#22C55E', // green — adopted from outside
+        kind: 'tmux',
+        tmuxName: candidateName,
         position: { x: worldX - 360, y: worldY - 240 },
       });
+      return;
+    }
+
+    // Fallback: spawn a new local Claude here, then poke the install
+    // hint state so the InstallShimToast knows whether to surface.
+    addSession({
+      name: displayName,
+      color: '#D97745',
+      kind: 'local',
+      cwd: folder,
+      position: { x: worldX - 360, y: worldY - 240 },
     });
+
+    // Don't pester users who already have the shim — the absence here
+    // means "no session for THIS folder", not "shim is missing".
+    try {
+      const installed = await window.grove.system.hasGroveClaudeShim();
+      if (!installed) {
+        useWorkspaceStore.getState().nudgeInstallShim(folder);
+      }
+    } catch {
+      // Best effort.
+    }
   }
 
   // Fullscreen short-circuit (no transform).

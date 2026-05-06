@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# grove-claude — run Claude Code under a tmux session keyed to the
+# current working directory, so it's adoptable by the Grove desktop app.
+#
+# Usage:
+#   In a project folder, run `grove-claude` instead of `claude`.
+#   Then drag that Terminal window's title-bar proxy icon (or the folder
+#   itself from Finder) onto Grove — Grove will find this tmux session
+#   and attach in-place. No new Claude session is spawned; the existing
+#   one keeps running. Detach back to Terminal at any time.
+#
+# Re-running grove-claude in the same folder reattaches to the same
+# session. Already inside tmux? Skips wrapping and just execs claude.
+
+set -e
+
+# Inside tmux already → don't double-wrap. The user can manage their
+# own session there.
+if [ -n "$TMUX" ]; then
+  exec claude "$@"
+fi
+
+# Resolve cwd to a canonical absolute path so symlink ≠ realpath
+# don't fork into different sessions.
+CWD="$(pwd -P)"
+
+# Deterministic session name: grove-<8-char-sha1-of-cwd>. Grove computes
+# the same hash on its side when a folder is dropped, so the lookup is
+# O(1) without tmux metadata round-trips.
+if command -v shasum >/dev/null 2>&1; then
+  HASH="$(printf '%s' "$CWD" | shasum -a 1 | cut -c1-8)"
+elif command -v sha1sum >/dev/null 2>&1; then
+  HASH="$(printf '%s' "$CWD" | sha1sum | cut -c1-8)"
+else
+  echo "grove-claude: need shasum or sha1sum on PATH" >&2
+  exit 1
+fi
+SESSION_NAME="grove-${HASH}"
+
+# Resolve claude. PATH may not include the user's actual install in
+# every shell environment; check the common spots.
+resolve_claude() {
+  if command -v claude >/dev/null 2>&1; then
+    command -v claude
+    return
+  fi
+  for p in \
+    "$HOME/.local/bin/claude" \
+    "/usr/local/bin/claude" \
+    "/opt/homebrew/bin/claude" \
+    "$HOME/.claude/local/claude"
+  do
+    if [ -x "$p" ]; then echo "$p"; return; fi
+  done
+  return 1
+}
+
+CLAUDE_BIN="$(resolve_claude)" || {
+  echo "grove-claude: claude binary not found on PATH or in standard locations" >&2
+  exit 127
+}
+
+# Session already exists → attach (this is the "re-open same session"
+# path; works in Terminal AND surfaces in Grove's external sessions).
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+  exec tmux attach-session -t "$SESSION_NAME"
+fi
+
+# Build the claude invocation, properly quoting any user args.
+CMD="$CLAUDE_BIN"
+for arg in "$@"; do
+  CMD="$CMD $(printf '%q' "$arg")"
+done
+
+# -A: attach if exists (race-safe). -c: tmux session inherits cwd.
+exec tmux new-session -A -s "$SESSION_NAME" -c "$CWD" "$CMD"

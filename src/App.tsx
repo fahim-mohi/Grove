@@ -7,6 +7,7 @@ import { Toolbar } from './components/Toolbar';
 import { CommandPalette } from './components/CommandPalette';
 import { Onboarding } from './components/Onboarding';
 import { HandoffToast } from './components/HandoffToast';
+import { InstallShimToast } from './components/InstallShimToast';
 import { TmuxMissingBanner } from './components/TmuxMissingBanner';
 import { ThemeProvider } from './components/ThemeProvider';
 import { useWorkspaceStore } from './store/workspace';
@@ -226,6 +227,7 @@ export function App() {
         <CommandPalette open={modal?.type === 'commandPalette'} onClose={closeModal} />
         <Onboarding open={showOnboarding} onComplete={completeOnboarding} />
         <HandoffToast />
+        <InstallShimToast />
 
         {saveError && (
           <div

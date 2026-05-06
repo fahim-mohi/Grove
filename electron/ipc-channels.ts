@@ -11,6 +11,8 @@ export const IpcChannel = {
   PTY_EXIT: 'pty:exit',
   SYSTEM_IS_CLAUDE_INSTALLED: 'system:is-claude-installed',
   SYSTEM_RESOLVE_DROP_FOLDER: 'system:resolve-drop-folder',
+  SYSTEM_INSTALL_GROVE_CLAUDE_SHIM: 'system:install-grove-claude-shim',
+  SYSTEM_HAS_GROVE_CLAUDE_SHIM: 'system:has-grove-claude-shim',
   DIALOG_CONFIRM: 'dialog:confirm',
   DIALOG_CHOOSE_DIRECTORY: 'dialog:choose-directory',
   STORE_GET_ALL: 'store:get-all',

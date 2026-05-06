@@ -1,7 +1,8 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import { join, dirname } from 'node:path';
-import { stat, chmod } from 'node:fs/promises';
+import { stat, chmod, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { PtyManager } from './pty-manager';
 import { TmuxManager } from './tmux-manager';
 import {
@@ -156,6 +157,53 @@ function registerIpcHandlers(): void {
         return s.isDirectory() ? rawPath : dirname(rawPath);
       } catch {
         return null;
+      }
+    },
+  );
+
+  // Install / detect the `grove-claude` shim. The shim is the bridge
+  // that makes existing Claude sessions adoptable: any `claude`
+  // invocation routed through grove-claude is tmux-wrapped with a
+  // deterministic session name, so Grove can attach to the same session
+  // when its folder is dropped onto the canvas.
+  ipcMain.handle(
+    IpcChannel.SYSTEM_HAS_GROVE_CLAUDE_SHIM,
+    async (): Promise<boolean> => {
+      const installPath = join(homedir(), '.local', 'bin', 'grove-claude');
+      try {
+        const s = await stat(installPath);
+        return s.isFile();
+      } catch {
+        return false;
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IpcChannel.SYSTEM_INSTALL_GROVE_CLAUDE_SHIM,
+    async (): Promise<{ ok: true; path: string } | { ok: false; error: string }> => {
+      // Source path: app bundle in production, repo bin/ in dev.
+      const sourceCandidates = [
+        join(__dirname, '../../bin/grove-claude'), // dev
+        join(process.resourcesPath ?? '', 'bin/grove-claude'), // packaged
+        join(process.resourcesPath ?? '', 'app.asar.unpacked/bin/grove-claude'),
+      ];
+      const source = sourceCandidates.find((p) => p && existsSync(p));
+      if (!source) {
+        return { ok: false, error: 'grove-claude shim not found in app bundle.' };
+      }
+      const installDir = join(homedir(), '.local', 'bin');
+      const installPath = join(installDir, 'grove-claude');
+      try {
+        await mkdir(installDir, { recursive: true });
+        await copyFile(source, installPath);
+        await chmod(installPath, 0o755);
+        return { ok: true, path: installPath };
+      } catch (err) {
+        return {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
       }
     },
   );

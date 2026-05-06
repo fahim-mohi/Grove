@@ -44,6 +44,11 @@ export interface WorkspaceState {
   tmuxAvailable: boolean;
   externalTmuxSessions: TmuxSessionInfo[]; // tmux sessions running outside Grove right now
   lastDetachedTmux: { tmuxName: string; sessionName: string; at: number } | null;
+  // Nudge state: set after a folder drop spawns a fresh local Claude
+  // (because no grove-claude tmux session was found AND the shim isn't
+  // installed). The InstallShimToast watches this and offers a one-
+  // click install. Cleared on dismiss or after the user installs.
+  installShimNudge: { folder: string; at: number } | null;
   // True while a panel is being dragged AND the cursor is hovering over
   // a region that would trigger detach-on-drop (currently the sidebar).
   // Lets the sidebar render an accent ring as visual confirmation.
@@ -73,6 +78,8 @@ export interface WorkspaceState {
   setSessionAttached: (id: string, attached: boolean) => void;
   noteDetached: (info: { tmuxName: string; sessionName: string }) => void;
   clearDetachedNotice: () => void;
+  nudgeInstallShim: (folder: string) => void;
+  clearInstallShimNudge: () => void;
   setDetachDropActive: (active: boolean) => void;
 
   // Canvas transform actions
@@ -112,6 +119,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   tmuxAvailable: false,
   externalTmuxSessions: [],
   lastDetachedTmux: null,
+  installShimNudge: null,
   detachDropActive: false,
 
   addSession(input) {
@@ -273,6 +281,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   clearDetachedNotice() {
     set({ lastDetachedTmux: null });
+  },
+
+  nudgeInstallShim(folder) {
+    set({ installShimNudge: { folder, at: Date.now() } });
+  },
+
+  clearInstallShimNudge() {
+    set({ installShimNudge: null });
   },
 
   setDetachDropActive(active) {

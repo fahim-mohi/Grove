@@ -60,6 +60,14 @@ const groveApi = {
     resolveDropFolder(path: string): Promise<string | null> {
       return ipcRenderer.invoke(IpcChannel.SYSTEM_RESOLVE_DROP_FOLDER, path);
     },
+    hasGroveClaudeShim(): Promise<boolean> {
+      return ipcRenderer.invoke(IpcChannel.SYSTEM_HAS_GROVE_CLAUDE_SHIM);
+    },
+    installGroveClaudeShim(): Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    > {
+      return ipcRenderer.invoke(IpcChannel.SYSTEM_INSTALL_GROVE_CLAUDE_SHIM);
+    },
   },
   dialog: {
     confirm(opts: ConfirmOptions): Promise<boolean> {
