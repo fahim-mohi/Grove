@@ -12,11 +12,11 @@ export const groveDarkTheme: Theme = {
       // Even when "light mode" is selected, Grove Dark stays dark — it's
       // a one-mode theme. Mirror the dark values so toggling produces
       // sensible behavior without surprising the user.
-      '--bg-canvas': '#121010',
-      '--bg-canvas-dot': 'rgba(244, 238, 231, 0.10)',
-      '--bg-panel': '#1C1917',
-      '--bg-panel-header': '#161311',
-      '--bg-sidebar': '#161311',
+      '--bg-canvas': '#171412',
+      '--bg-canvas-dot': 'rgba(244, 238, 231, 0.14)',
+      '--bg-panel': '#211D1A',
+      '--bg-panel-header': '#1A1714',
+      '--bg-sidebar': '#1F1B19',
       '--bg-sidebar-hover': '#1F1B19',
       '--bg-sidebar-active': 'rgba(229, 138, 85, 0.18)',
       '--bg-toolbar': 'rgba(18, 16, 16, 0.85)',
@@ -65,11 +65,11 @@ export const groveDarkTheme: Theme = {
       '--terminal-fg': '#F4EEE7',
     },
     dark: {
-      '--bg-canvas': '#0E0C0B',
-      '--bg-canvas-dot': 'rgba(244, 238, 231, 0.08)',
-      '--bg-panel': '#1A1715',
-      '--bg-panel-header': '#13110F',
-      '--bg-sidebar': '#13110F',
+      '--bg-canvas': '#171412',
+      '--bg-canvas-dot': 'rgba(244, 238, 231, 0.13)',
+      '--bg-panel': '#211D1A',
+      '--bg-panel-header': '#1A1714',
+      '--bg-sidebar': '#1F1B19',
       '--bg-sidebar-hover': '#1C1916',
       '--bg-sidebar-active': 'rgba(229, 138, 85, 0.20)',
       '--bg-toolbar': 'rgba(14, 12, 11, 0.88)',

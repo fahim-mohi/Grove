@@ -107,10 +107,10 @@
 
 .dark {
   --bg-canvas: #171412;
-  --bg-canvas-dot: rgba(244, 238, 231, 0.10);
+  --bg-canvas-dot: rgba(244, 238, 231, 0.13);
   --bg-panel: #211D1A;
   --bg-panel-header: #1A1714;
-  --bg-sidebar: #1A1714;
+  --bg-sidebar: #1F1B19;
   --bg-sidebar-hover: #231F1B;
   --bg-sidebar-active: rgba(229, 138, 85, 0.16);
   --bg-toolbar: rgba(23, 20, 18, 0.85);
@@ -260,4 +260,14 @@ textarea,
 }
 .xterm .xterm-viewport {
   background-color: transparent !important;
+}
+
+/* Status pulse for the toolbar's "online / N sessions" indicator. */
+@keyframes grove-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }

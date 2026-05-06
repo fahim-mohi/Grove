@@ -11,10 +11,7 @@ export function EmptyCanvas({ onCreate }: EmptyCanvasProps) {
     <div className="pointer-events-none flex h-full w-full items-center justify-center">
       <div className="pointer-events-auto flex flex-col items-center gap-3 px-8 py-10 text-center">
         <GroveMark />
-        <h2 className="font-ui text-[15px] font-medium text-text-primary">
-          Start your first Grove session
-        </h2>
-        <p className="max-w-[300px] font-ui text-[13px] text-text-muted">
+        <p className="font-ui text-[13px] text-text-secondary">
           Press{' '}
           <kbd
             className="rounded-control border border-edge bg-modal px-1.5 py-0.5 font-terminal text-[11px] text-text-secondary"
@@ -30,7 +27,6 @@ export function EmptyCanvas({ onCreate }: EmptyCanvasProps) {
           >
             click to launch Claude Code
           </button>
-          .
         </p>
       </div>
     </div>

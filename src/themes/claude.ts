@@ -73,10 +73,10 @@ export const claudeTheme: Theme = {
     },
     dark: {
       '--bg-canvas': '#171412',
-      '--bg-canvas-dot': 'rgba(244, 238, 231, 0.10)',
+      '--bg-canvas-dot': 'rgba(244, 238, 231, 0.13)',
       '--bg-panel': '#211D1A',
       '--bg-panel-header': '#1A1714',
-      '--bg-sidebar': '#1A1714',
+      '--bg-sidebar': '#1F1B19',
       '--bg-sidebar-hover': '#231F1B',
       '--bg-sidebar-active': 'rgba(229, 138, 85, 0.16)',
       '--bg-toolbar': 'rgba(23, 20, 18, 0.85)',

@@ -14,15 +14,7 @@ import { useSettingsStore } from './store/settings';
 import { useShortcuts } from './hooks/useShortcuts';
 import { setSaveErrorListener } from './store/persistence';
 
-interface Versions {
-  electron: string;
-  node: string;
-  chrome: string;
-  grove: string;
-}
-
 export function App() {
-  const [versions, setVersions] = useState<Versions | null>(null);
   const [claudeInstalled, setClaudeInstalled] = useState<boolean | null>(null);
   const sessionCount = useWorkspaceStore((s) => s.sessionOrder.length);
   const modal = useWorkspaceStore((s) => s.modal);
@@ -41,7 +33,6 @@ export function App() {
   const setExternalTmuxSessions = useWorkspaceStore((s) => s.setExternalTmuxSessions);
 
   useEffect(() => {
-    setVersions(window.grove.system.versions());
     void window.grove.system.isClaudeInstalled().then(setClaudeInstalled);
     // Show onboarding on first run only (no persisted completion stamp).
     void (async () => {
@@ -209,11 +200,8 @@ export function App() {
           </main>
         </div>
 
-        {versions && (
-          <footer className="flex-shrink-0 border-t border-edge px-6 py-2 text-center font-terminal text-[11px] text-text-muted">
-            electron {versions.electron} · node {versions.node} · grove {versions.grove}
-          </footer>
-        )}
+        {/* Version footer hidden — info reachable via Settings → About per
+            UI design spec. Toolbar / About modal own the surface area. */}
 
         <NewSessionDialog open={modal?.type === 'newSession'} onClose={closeModal} />
         <SettingsModal open={modal?.type === 'settings'} onClose={closeModal} />
