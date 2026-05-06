@@ -78,12 +78,13 @@ export class PtyManager extends EventEmitter<PtyManagerEventMap> {
   }
 
   create(sessionId: string, opts: CreateSessionOpts): CreateSessionResult {
+    // Idempotent re-create: if a session with this id is already alive,
+    // tear it down and respawn. This collides during dev HMR (panel
+    // remounts before the prior cleanup's kill IPC has finished) and
+    // also when the user fast-cycles a panel; the previous behavior
+    // surfaced an "already exists" error and forced a manual retry.
     if (this.sessions.has(sessionId)) {
-      return {
-        ok: false,
-        reason: 'already-exists',
-        error: `Session ${sessionId} already exists`,
-      };
+      this.kill(sessionId);
     }
 
     let command: string;

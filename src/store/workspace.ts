@@ -201,18 +201,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   bringToFront(id) {
-    // Move id to the end of sessionOrder so its z-index becomes the highest.
-    // Renumber sortOrder so persistence has a stable representation.
+    // Mutate ONLY sessionOrder. Don't rewrite every session object's
+    // sortOrder — that nukes referential equality across the whole
+    // sessions map and forces every panel to re-render on every focus
+    // change. sortOrder is derived from the sessionOrder index at
+    // persistence time (see snapshotSessions) and at render time
+    // (DraggableSessionWrapper receives it as a prop), not stored.
     set((state) => {
       if (!state.sessions[id]) return state;
+      if (state.sessionOrder[state.sessionOrder.length - 1] === id) return state;
       const filtered = state.sessionOrder.filter((x) => x !== id);
-      const nextOrder = [...filtered, id];
-      const nextSessions: Record<string, Session> = {};
-      nextOrder.forEach((sid, idx) => {
-        const s = state.sessions[sid];
-        if (s) nextSessions[sid] = { ...s, sortOrder: idx };
-      });
-      return { sessions: nextSessions, sessionOrder: nextOrder };
+      return { sessionOrder: [...filtered, id] };
     });
   },
 
@@ -232,18 +231,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   reorderSessions(orderedIds) {
-    set((state) => {
-      const next: Record<string, Session> = {};
-      orderedIds.forEach((id, idx) => {
-        const s = state.sessions[id];
-        if (s) next[id] = { ...s, sortOrder: idx };
-      });
-      // Preserve any sessions not in orderedIds (defensive)
-      Object.keys(state.sessions).forEach((id) => {
-        if (!next[id] && state.sessions[id]) next[id] = state.sessions[id];
-      });
-      return { sessions: next, sessionOrder: orderedIds };
-    });
+    // sortOrder is derived from index, not stored on the session.
+    set({ sessionOrder: orderedIds });
   },
 
   toggleSidebar() {

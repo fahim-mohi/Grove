@@ -41,16 +41,16 @@ function queueSave(patch: Partial<PersistedState>): void {
 }
 
 function snapshotSessions(): Session[] {
+  // sortOrder is no longer maintained on the live session object — derive
+  // it from sessionOrder index at save time so persisted state stays
+  // self-describing.
   const state = useWorkspaceStore.getState();
   return state.sessionOrder
-    .map((id) => state.sessions[id])
-    .filter((s): s is Session => Boolean(s))
-    .map((s) => {
-      // Drop any transient fields. ptyPid was already optional and never
-      // set client-side anyway.
-      const { ...rest } = s;
-      return rest;
-    });
+    .map((id, idx) => {
+      const s = state.sessions[id];
+      return s ? { ...s, sortOrder: idx } : null;
+    })
+    .filter((s): s is Session => Boolean(s));
 }
 
 function snapshotTags(): Tag[] {

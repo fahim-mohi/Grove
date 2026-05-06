@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -495,10 +495,11 @@ export function WorkspaceCanvas() {
               <EmptyCanvas onCreate={() => openModal({ type: 'newSession' })} />
             </div>
           ) : (
-            sortedSessions.map((session) => (
+            sortedSessions.map((session, idx) => (
               <DraggableSessionWrapper
                 key={session.id}
                 session={session}
+                sortIndex={idx}
                 isFocused={focusedId === session.id}
                 isBeingDragged={draggingId === session.id}
                 isFilteredOut={filterTagId !== null && !session.tags.includes(filterTagId)}
@@ -581,13 +582,26 @@ interface DraggableWrapperProps {
   isFocused: boolean;
   isBeingDragged: boolean;
   isFilteredOut: boolean;
+  // Z-index ordinal — derived from session's index in sessionOrder so
+  // bringToFront only has to mutate that one array, not every session's
+  // sortOrder field. Stable across renders unless THIS session moves.
+  sortIndex: number;
 }
 
-function DraggableSessionWrapper({
+const DraggableSessionWrapper = memo(DraggableSessionWrapperImpl, (a, b) =>
+  a.session === b.session &&
+  a.isFocused === b.isFocused &&
+  a.isBeingDragged === b.isBeingDragged &&
+  a.isFilteredOut === b.isFilteredOut &&
+  a.sortIndex === b.sortIndex,
+);
+
+function DraggableSessionWrapperImpl({
   session,
   isFocused,
   isBeingDragged,
   isFilteredOut,
+  sortIndex,
 }: DraggableWrapperProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: session.id });
   const moveSession = useWorkspaceStore((s) => s.moveSession);
@@ -597,7 +611,7 @@ function DraggableSessionWrapper({
 
   const z = isBeingDragged
     ? Z_PANEL_DRAGGING
-    : (isFocused ? Z_PANEL_FOCUSED : Z_PANEL_RESTING) + session.sortOrder;
+    : (isFocused ? Z_PANEL_FOCUSED : Z_PANEL_RESTING) + sortIndex;
 
   function handlePointerDown(): void {
     if (!isFocused) {
