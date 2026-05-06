@@ -105,16 +105,22 @@ export function TagBadge({
         border: `1px solid ${borderColor}`,
       }}
     >
-      <span
-        aria-hidden
-        style={{
-          width: dotSize,
-          height: dotSize,
-          borderRadius: 999,
-          background: tag.color,
-          flexShrink: 0,
-        }}
-      />
+      {/* xs (panel header) renders as plain colored text — matches the
+          asset pack panel-header `mktg` form. sm (sidebar tag strip,
+          dialog picker, settings) keeps the dot prefix per the
+          tag-pills section of the asset pack. */}
+      {size !== 'xs' && (
+        <span
+          aria-hidden
+          style={{
+            width: dotSize,
+            height: dotSize,
+            borderRadius: 999,
+            background: tag.color,
+            flexShrink: 0,
+          }}
+        />
+      )}
       <span className="truncate" style={{ maxWidth: 96 }}>
         {tag.name}
       </span>
